@@ -1,30 +1,40 @@
 # -*- coding: utf-8 -*-
-import click
+import numpy as np
 import logging
+import torch
 from pathlib import Path
-from dotenv import find_dotenv, load_dotenv
+import matplotlib.pyplot as plt
+
+color_path = "C:/Users/Bruger/Desktop/DTU/MLOps/Kaggle_data/l/"
 
 
-@click.command()
-@click.argument("input_filepath", type=click.Path(exists=True))
-@click.argument("output_filepath", type=click.Path())
-def main(input_filepath, output_filepath):
-    """Runs data processing scripts to turn raw data from (../raw) into
-    cleaned data ready to be analyzed (saved in ../processed).
+
+def load_MIRFLICKR25k():
+    """ Runs data processing scripts to turn raw data from (../raw) into
+        cleaned data ready to be analyzed (saved in ../processed).
     """
+    #data = torch.load(color_path + "ab2.npy")
+    data = np.load(color_path + "gray_scale.npy")
+    data_torch = torch.from_numpy(data)
+    print(data_torch.size())
+    
+    print(data_torch[0].size())
+
+    data[0].shape
+    #view = data[0].view(224,224,2)
+    plt.imshow(data[0].astype("float32"))
+    plt.show()
+    plt.plot(np.array([1,2,3,4]),np.array([1,2,3,4]))
+
     logger = logging.getLogger(__name__)
     logger.info("making final data set from raw data")
 
 
-if __name__ == "__main__":
-    log_fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+
+
+if __name__ == '__main__':
+    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.INFO, format=log_fmt)
 
-    # not used in this stub but often useful for finding various files
-    project_dir = Path(__file__).resolve().parents[2]
-
-    # find .env automagically by walking up directories until it's found, then
-    # load up the .env entries as environment variables
-    load_dotenv(find_dotenv())
-
-    main()
+    load_MIRFLICKR25k()
