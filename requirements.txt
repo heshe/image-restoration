@@ -12,3 +12,9 @@ python-dotenv>=0.5.1
 
 # backwards compatibility
 pathlib2
+
+
+# Project specific
+argparse
+torch
+torchvision

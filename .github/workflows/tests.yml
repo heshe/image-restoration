@@ -1,4 +1,4 @@
-name: "Run isort"
+name: "Run tests"
 
 on:
   push:
@@ -21,7 +21,9 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install isort
-    - name: Isorts the repo
+        pip install -r requirements.txt
+        pip install -r requirements_tests.txt
+    - name: Test with pytest
       run: |
-        isort .
+        pip install pytest
+        pytest -v
