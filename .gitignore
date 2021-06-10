@@ -353,3 +353,5 @@ MigrationBackup/
 # Additionals added by us to template
 wandb/*
 .pytest*
+data/*
+.DS_Store
