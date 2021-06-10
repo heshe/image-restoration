@@ -27,7 +27,7 @@ def load_MIRFLICKR25k():
     plt.plot(np.array([1,2,3,4]),np.array([1,2,3,4]))
 
     logger = logging.getLogger(__name__)
-    logger.info('making final data set from raw data')
+    logger.info("making final data set from raw data")
 
 
 
