@@ -33,12 +33,17 @@ class Decoder(nn.Module):
     def __init__(self, latent_dim, hidden_dim, output_dim):
         super(Decoder, self).__init__()
         self.FC_hidden = nn.Linear(latent_dim, hidden_dim)
-        self.FC_output = nn.Linear(hidden_dim, output_dim)
+        self.FC_output1 = nn.Linear(hidden_dim, output_dim)
+        self.FC_output2 = nn.Linear(hidden_dim, output_dim)
 
     def forward(self, x):
         h = torch.relu(self.FC_hidden(x))
-        x_hat = torch.sigmoid(self.FC_output(h))
-        return x_hat
+        a = torch.sigmoid(self.FC_output1(h))
+        b = torch.sigmoid(self.FC_output2(h))
+
+        X_hat = torch.stack((a, b), dim=-1)
+
+        return X_hat
 
 
 class Model(nn.Module):

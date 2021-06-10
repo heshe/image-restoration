@@ -52,9 +52,9 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, n = 10):
     imgs = imgs.astype("uint8")
     
     for i in range(0, n):
-        rgb_imgs[i, :, :, :] = cv2.cvtColor(imgs[i], cv2.COLOR_LAB2RGB).astype("uint8")
+        A = cv2.cvtColor(imgs[i], cv2.COLOR_LAB2RGB).astype("uint8")
         im = Image.fromarray(A)
-        im.save("your_file.jpeg")
+        im.save(f"/Users/heshe/Desktop/mlops/image-restoration/data/img{i}.png")
 
     #convert the image matrix into a numpy array
     imgs_ = np.array(imgs_)
