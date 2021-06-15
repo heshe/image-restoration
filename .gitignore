@@ -355,3 +355,4 @@ wandb/*
 .pytest*
 data/*
 .DS_Store
+*wandb
