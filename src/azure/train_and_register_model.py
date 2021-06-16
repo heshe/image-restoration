@@ -17,7 +17,6 @@ parser = argparse.ArgumentParser(description="Deployment arguments")
 parser.add_argument("--data_name", default="image_resto", type=str)
 parser.add_argument("--experiment_name", default="image_resto", type=str)
 
-
 # Hyperparameters
 parser.add_argument("--lr", default=1e-3, type=float)
 parser.add_argument("--n_epochs", default=5, type=int)
@@ -55,7 +54,7 @@ packages = CondaDependencies.create(conda_packages=['pip'],
                                    )
 
 # Add pip packages from requirements.txt
-with open(os.path.join(experiment_folder, "requirements.txt"), "r") as f:
+with open(os.path.join(ROOT, "requirements.txt"), "r") as f:
     for line in f:
         if line[0].isalpha():
             packages.add_pip_package(line.strip())
