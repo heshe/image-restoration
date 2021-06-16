@@ -3,23 +3,21 @@ Adapted from
 https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_AutoEncoder.ipynb
 A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
-import joblib
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
 import sys
 import argparse
 import numpy as np
+import tqdm
 import cv2
 
-from azureml.core import Dataset, Run
 from PIL import Image
-from pathlib import Path
 from torchvision.utils import save_image
 from torchvision.datasets import MNIST
 from torch.optim import Adam
 
-from src.models.model_FC import Encoder, Decoder, Model
+from src.models.model import Encoder, Decoder, Model
 
 
 class Trainer:
@@ -37,19 +35,11 @@ class Trainer:
         parser.add_argument("--plot_results", default=True, type=bool)
         parser.add_argument("--use_cuda", default=False, type=bool)
 
+        parser.add_argument("--dataset_path", default="/Users/heshe/Desktop/mlops/cookiecutter_project/data")
         parser.add_argument("--run_name", default="default_run")
-        
-        parser.add_argument('--input-data', type=str, dest='dataset_folder', help='data mount point')
-
-        parser.add_argument("--save_model", default=True, type=bool)
-        parser.add_argument("--model_name", default="image_resto", type=str)
-        parser.add_argument("--make_reconstructions", default=False, type=bool)
 
         self.args = parser.parse_args(sys.argv[1:])
         print(sys.argv)
-
-        # Set root path
-        self.ROOT = str(Path(__file__).parent.parent.parent)
 
     def loss_function(self, x, x_hat, mean, log_var):
         reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
@@ -57,18 +47,23 @@ class Trainer:
         return reproduction_loss + KLD
 
     def train(self):
-        # Get the experiment run context
-        run = Run.get_context() 
-
         # Training device
-        DEVICE = torch.device("cuda" if self.args.use_cuda and torch.cuda.is_available() else "cpu")
+        DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
+
+        # Data loading
+        mnist_transform = transforms.Compose([transforms.ToTensor()])
+
+        train_dataset = MNIST(
+            self.args.dataset_path + "/MNIST_train", transform=mnist_transform, train=True, download=True
+        )
+        test_dataset = MNIST(
+            self.args.dataset_path + "/MNIST_test", transform=mnist_transform, train=False, download=True
+        )
 
         # Get train and test
-        # load the diabetes dataset
-        print("Loading Data...")
-        train_path = run.input_datasets['image_resto']
-        ab_imgs = np.load(train_path + "/ab1.npy")
-        gray_imgs = np.load(train_path + "/gray_scale.npy")[:10000, :, :]
+        train_path = "/Users/heshe/Desktop/mlops/image-restoration/data/raw/"
+        ab_imgs = np.load(train_path + "/ab/ab/ab1.npy")
+        gray_imgs = np.load(train_path + "/l/gray_scale.npy")[:10000, :, :]
 
         train_X = gray_imgs[:9000, :, :]
         test_X = gray_imgs[9000:, :, :]
@@ -92,7 +87,7 @@ class Trainer:
         for epoch in range(self.args.n_epochs):
             overall_loss = 0
             #for batch_idx, (x, _) in enumerate(train_loader):
-            for i in range(int(train_X.shape[0]/self.args.batch_size)):
+            for i in tqdm.tqdm(range(int(train_X.shape[0]/self.args.batch_size))):
                 l1 = i*self.args.batch_size
                 l2 = i*self.args.batch_size + self.args.batch_size
                 X = train_X[l1:l2, :, :]
@@ -115,80 +110,45 @@ class Trainer:
 
                 loss.backward()
                 optimizer.step()
-                
-            run.log("Average Loss: ", np.float(overall_loss / (i * self.args.batch_size)))
-        
-        # Log model and performance
-        run.log('LR', np.float(self.args.lr))
-        run.log('Epochs', np.int(self.args.n_epochs))
-        run.log('Latent dim', np.int(self.args.latent_dim))
-        run.log('Hidden dim', np.int(self.args.hidden_dim))
-        run.log('Overall loss', np.float(overall_loss))
+            print("\tEpoch", epoch + 1, "complete!",
+                  "\tAverage Loss: ", overall_loss / (i * self.args.batch_size))
+
         print("Finish!!")
 
         # Generate reconstructions
-        if self.args.make_reconstructions:
-            model.eval()
-            with torch.no_grad():
-                #for batch_idx, (x, _) in enumerate(test_loader):
-                for i in range(int(test_X.shape[0]/self.args.batch_size)):
-                    l1 = i*self.args.batch_size
-                    l2 = i*self.args.batch_size + self.args.batch_size
-                    X = test_X[l1:l2, :, :]
-                    Y = test_Y[l1:l2, :, :, :]
+        model.eval()
+        with torch.no_grad():
+            #for batch_idx, (x, _) in enumerate(test_loader):
+            for i in tqdm.tqdm(range(int(test_X.shape[0]/self.args.batch_size))):
+                l1 = i*self.args.batch_size
+                l2 = i*self.args.batch_size + self.args.batch_size
+                X = test_X[l1:l2, :, :]
+                Y = test_Y[l1:l2, :, :, :]
 
-                    X = torch.from_numpy(X)/255
-                    Y = torch.from_numpy(Y)/255
+                X = torch.from_numpy(X)/255
+                Y = torch.from_numpy(Y)/255
 
-                    X = X.view(self.args.batch_size, self.args.x_dim)
-                    Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
+                X = X.view(self.args.batch_size, self.args.x_dim)
+                Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
 
-                    X = X.to(DEVICE)
-    
-                    X_hat, _, _ = model(X)
-                    break
+                X = X.to(DEVICE)
+ 
+                X_hat, _, _ = model(X)
+                break
 
-            res_imgs_path = os.path.join(self.ROOT, "reports", "figures")
+        res_imgs_path = "/Users/heshe/Desktop/mlops/image-restoration/reports/figures/"
 
-            X = X.view(16, 224*224)
-            Y = Y.view(16, 224*224, 2)
+        X = X.view(16, 224*224)
+        Y = Y.view(16, 224*224, 2)
 
-            X_origin = get_rbg_from_lab((X*255).view(16, 224, 224), (Y*255).view(16, 224, 224, 2), n=10)
-            X_hat = get_rbg_from_lab((X*255).view(16, 224, 224), (X_hat*255).view(16, 224, 224, 2), n=10)
+        X_origin = get_rbg_from_lab((X*255).view(16, 224, 224), (Y*255).view(16, 224, 224, 2), n=10)
+        X_hat = get_rbg_from_lab((X*255).view(16, 224, 224), (X_hat*255).view(16, 224, 224, 2), n=10)
 
-            for i in range(X_origin.shape[0]):
-                im = Image.fromarray(X_origin[i])
-                im.save(os.path.join(res_imgs_path, "orig", f"img{i}.png"))
-                im = Image.fromarray(X_hat[i])
-                im.save(os.path.join(res_imgs_path, "recon", f"img{i}.png"))
-
-        # Save model
-        if self.args.save_model:
-            # Save the trained model
-            model_file = self.args.model_name + ".pkl"
-            joblib.dump(value=model, filename=model_file)
-            run.upload_file(
-                name = os.path.join(self.ROOT, "models", model_file),
-                path_or_stream = './' + model_file,
-            )
-        
-            run.complete()
-            # Register the model
-            run.register_model(
-                model_path=os.path.join(self.ROOT, "models", model_file),
-                model_name=self.args.model_name,
-                tags={'Training context':'Inline Training'},
-                #properties={
-                #    'LR': run.get_metrics()['LR'],
-                #    'Epochs': run.get_metrics()['Epochs'],
-                #    'Latent dim': run.get_metrics()['Latent dim'],
-                #    'Hidden dim': run.get_metrics()['Hidden dim'],
-                #    'Overall loss': run.get_metrics()['Overall loss'],
-                #}
-            )
-        else:
-            run.complete()
-
+        for i in range(X_origin.shape[0]):
+            im = Image.fromarray(X_origin[i])
+            im.save(f"/Users/heshe/Desktop/mlops/image-restoration/reports/figures/orig/img{i}.png")
+            im = Image.fromarray(X_hat[i])
+            im.save(f"/Users/heshe/Desktop/mlops/image-restoration/reports/figures/recon/img{i}.png")
 
 
 def get_rbg_from_lab(gray_imgs, ab_imgs, n = 10):
@@ -219,4 +179,3 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, n = 10):
 if __name__ == "__main__":
     trainer = Trainer()
     trainer.train()
-
