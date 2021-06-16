@@ -19,6 +19,7 @@ from torchvision.datasets import MNIST
 from torch.optim import Adam
 
 from src.models.model_FC import Encoder, Decoder, Model
+from src.models.model_conv import ConvVAE
 
 
 class Trainer:
@@ -35,17 +36,20 @@ class Trainer:
         parser.add_argument("--use_wandb", default=True, type=bool)
         parser.add_argument("--plot_results", default=True, type=bool)
         parser.add_argument("--use_cuda", default=False, type=bool)
+        parser.add_argument("--use_CNN", default=True, type=bool)
 
         parser.add_argument("--dataset_path", default="/Users/heshe/Desktop/mlops/cookiecutter_project/data")
         parser.add_argument("--run_name", default="default_run")
-
+        # import sys
+        # sys.argv=[""]
+        # args = parser.parse_args()
         self.args = parser.parse_args(sys.argv[1:])
         print(sys.argv)
 
     def loss_function(self, x, x_hat, mean, log_var):
         reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
-        return reproduction_loss + KLD
+        return reproduction_loss, KLD
 
     def train(self):
         # Init wandb
@@ -56,14 +60,6 @@ class Trainer:
         DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
 
         # Data loading
-        mnist_transform = transforms.Compose([transforms.ToTensor()])
-
-        train_dataset = MNIST(
-            self.args.dataset_path + "/MNIST_train", transform=mnist_transform, train=True, download=True
-        )
-        test_dataset = MNIST(
-            self.args.dataset_path + "/MNIST_test", transform=mnist_transform, train=False, download=True
-        )
 
         # Get train and test
         train_path = "/Users/heshe/Desktop/mlops/image-restoration/data/raw/"
@@ -76,14 +72,13 @@ class Trainer:
         train_Y = ab_imgs[:9000, :, :, :]
         test_Y = ab_imgs[9000:, :, :, :]
 
-        # Init data loaders
-        # train_loader = DataLoader(dataset=train_dataset, batch_size=self.args.batch_size, shuffle=True)
-        # test_loader = DataLoader(dataset=test_dataset, batch_size=self.args.batch_size, shuffle=False)
-
         # Init model
-        encoder = Encoder(input_dim=self.args.x_dim, hidden_dim=self.args.hidden_dim, latent_dim=self.args.latent_dim)
-        decoder = Decoder(latent_dim=self.args.latent_dim, hidden_dim=self.args.hidden_dim, output_dim=self.args.x_dim)
-        model = Model(Encoder=encoder, Decoder=decoder).to(DEVICE)
+        if self.args.use_CNN:
+            model = ConvVAE()
+        else:
+            encoder = Encoder(input_dim=self.args.x_dim, hidden_dim=self.args.hidden_dim, latent_dim=self.args.latent_dim)
+            decoder = Decoder(latent_dim=self.args.latent_dim, hidden_dim=self.args.hidden_dim, output_dim=self.args.x_dim)
+            model = Model(Encoder=encoder, Decoder=decoder).to(DEVICE)
 
         if self.args.use_wandb:
             wandb.watch(model, log_freq=100)
@@ -94,6 +89,8 @@ class Trainer:
         for epoch in range(self.args.n_epochs):
             train_loss = 0
             test_loss = 0
+            train_rec = 0
+            train_kld = 0
 
             # ______________TRAIN______________
             model.train()
@@ -109,15 +106,23 @@ class Trainer:
                 X = torch.from_numpy(X)/255
                 Y = torch.from_numpy(Y)/255
 
-                X = X.view(self.args.batch_size, self.args.x_dim)
-                Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
+                if self.args.use_CNN:
+                    X = X[:, None, :, :]
+                    Y = Y[:, None, :, :]
+
+                    Y = Y.view(self.args.batch_size, 2, 224, 224)
+                else:
+                    X = X.view(self.args.batch_size, self.args.x_dim)
+                    Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
 
                 X = X.to(DEVICE)
+                Y = Y.to(DEVICE)
 
                 optimizer.zero_grad()
 
                 X_hat, mean, log_var = model(X)
-                loss = self.loss_function(Y, X_hat, mean, log_var)
+                rec, kld = self.loss_function(Y, X_hat, mean, log_var)
+                loss = rec + kld
 
                 train_loss += loss.item()
 
@@ -138,14 +143,23 @@ class Trainer:
                     X = torch.from_numpy(X)/255
                     Y = torch.from_numpy(Y)/255
 
-                    X = X.view(self.args.batch_size, self.args.x_dim)
-                    Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
+                    if self.args.use_CNN:
+                        X = X[:, None, :, :]
+                        Y = Y[:, None, :, :]
+
+                        Y = Y.view(self.args.batch_size, 2, 224, 224)
+                    else:
+                        X = X.view(self.args.batch_size, self.args.x_dim)
+                        Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
 
                     X = X.to(DEVICE)
 
                     X_hat, mean, log_var = model(X)
-                    loss = self.loss_function(Y, X_hat, mean, log_var)
+                    rec, kld = self.loss_function(Y, X_hat, mean, log_var)
+                    loss = rec + kld
 
+                    train_rec += rec.item()
+                    train_kld += kld.item()
                     test_loss += loss.item()
 
             # Wandb
@@ -154,6 +168,8 @@ class Trainer:
                     {
                         "train_loss": train_loss,
                         "test_loss": test_loss,
+                        "train_rec": train_rec,
+                        "train_kld": train_kld
                     }
                 )
 
@@ -177,10 +193,6 @@ class Trainer:
 
             model.eval()
             with torch.no_grad():
-                # for batch_idx, (x, _) in enumerate(test_loader):
-                #for i in tqdm.tqdm(range(int(test_X.shape[0]/self.args.batch_size))):
-                    # l1 = i*self.args.batch_size
-                    # l2 = i*self.args.batch_size + self.args.batch_size
 
                 X = test_X[:n_images_to_log, :, :]
                 Y = test_Y[:n_images_to_log, :, :, :]
@@ -188,8 +200,14 @@ class Trainer:
                 X = torch.from_numpy(X)/255
                 Y = torch.from_numpy(Y)/255
 
-                X = X.view(n_images_to_log, self.args.x_dim)
-                Y = Y.view(n_images_to_log, self.args.x_dim, 2)
+                if self.args.use_CNN:
+                    X = X[:, None, :, :]
+                    Y = Y[:, None, :, :]
+
+                    Y = Y.view(n_images_to_log, 2, 224, 224)
+                else:
+                    X = X.view(n_images_to_log, self.args.x_dim)
+                    Y = Y.view(n_images_to_log, self.args.x_dim, 2)
 
                 X = X.to(DEVICE)
 
