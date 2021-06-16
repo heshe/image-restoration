@@ -31,7 +31,7 @@ print(model.name, 'version', model.version)
 env = Environment.from_pip_requirements('image_resto_env', os.path.join(ROOT, 'requirements.txt'))
 
 # Set path for scoring script
-script_file = os.path.join(ROOT, "src", "deploy", "score.py")
+script_file = os.path.join(ROOT, "src", "azure", "score.py")
 
 # Configure the scoring environment
 inference_config = InferenceConfig(entry_script=script_file, environment=env)
