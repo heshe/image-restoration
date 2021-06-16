@@ -356,3 +356,4 @@ wandb/*
 data/*
 .DS_Store
 *wandb
+*.pth
