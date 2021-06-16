@@ -5,6 +5,7 @@ from azureml.core.model import InferenceConfig
 from azureml.core import Environment, Model
 
 import os
+import sys
 import argparse
 from pathlib import Path
 
