@@ -46,9 +46,9 @@ class Decoder(nn.Module):
         return X_hat
 
 
-class Model(nn.Module):
+class Net(nn.Module):
     def __init__(self, Encoder, Decoder):
-        super(Model, self).__init__()
+        super(Net, self).__init__()
         self.Encoder = Encoder
         self.Decoder = Decoder
 
