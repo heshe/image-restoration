@@ -77,8 +77,8 @@ class Trainer:
         test_Y = ab_imgs[9000:, :, :, :]
 
         # Init data loaders
-        #train_loader = DataLoader(dataset=train_dataset, batch_size=self.args.batch_size, shuffle=True)
-        #test_loader = DataLoader(dataset=test_dataset, batch_size=self.args.batch_size, shuffle=False)
+        # train_loader = DataLoader(dataset=train_dataset, batch_size=self.args.batch_size, shuffle=True)
+        # test_loader = DataLoader(dataset=test_dataset, batch_size=self.args.batch_size, shuffle=False)
 
         # Init model
         encoder = Encoder(input_dim=self.args.x_dim, hidden_dim=self.args.hidden_dim, latent_dim=self.args.latent_dim)
