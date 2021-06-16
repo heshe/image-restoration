@@ -25,10 +25,10 @@ def run(raw_data):
     data = data.view(-1, 224*224)
     
     # Get the reconstruction from the model
-    reconstruction = model(data.float())
+    _, _, reconstruction = model(data.float())
 
     # Return the predictions as JSON
-    return json.dumps([rec.tolist() for rec in reconstruction])
+    return json.dumps(reconstruction.tolist())
 
 
 def scale_data(data):
