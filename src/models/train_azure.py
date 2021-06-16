@@ -19,7 +19,7 @@ from torchvision.utils import save_image
 from torchvision.datasets import MNIST
 from torch.optim import Adam
 
-from src.models.model_FC import Encoder, Decoder, Model
+from src.models.model_FC import Encoder, Decoder, Net
 
 
 class Trainer:
@@ -83,7 +83,7 @@ class Trainer:
         # Init model
         encoder = Encoder(input_dim=self.args.x_dim, hidden_dim=self.args.hidden_dim, latent_dim=self.args.latent_dim)
         decoder = Decoder(latent_dim=self.args.latent_dim, hidden_dim=self.args.hidden_dim, output_dim=self.args.x_dim)
-        model = Model(Encoder=encoder, Decoder=decoder).to(DEVICE)
+        model = Net(Encoder=encoder, Decoder=decoder).to(DEVICE)
 
         optimizer = Adam(model.parameters(), lr=self.args.lr)
 

@@ -1,5 +1,5 @@
 # local package
--e .
+-e git+https://github.com/heshe/image-restoration@master#egg=src
 
 # external requirements
 click
@@ -21,3 +21,8 @@ torch
 torchvision
 opencv-python
 joblib
+
+# Azure
+azureml-sdk
+azureml-widgets
+azureml-defaults
