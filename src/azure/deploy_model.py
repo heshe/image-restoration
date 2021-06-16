@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 # Add parser
+parser = argparse.ArgumentParser(description="Deployment arguments")
 parser.add_argument("--model_name", default="image_resto", type=str)
 parser.add_argument("--model_version", default="", type=str)
 parser.add_argument("--service_name", default="image-resto-service", type=str)
