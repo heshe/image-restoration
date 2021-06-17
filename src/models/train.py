@@ -5,7 +5,6 @@ A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
 import torch
 import torch.nn as nn
-import torchvision.transforms as transforms
 import sys
 import argparse
 import numpy as np
@@ -28,9 +27,10 @@ class Trainer:
         parser.add_argument("--lr", default=1e-3, type=float)
         parser.add_argument("--n_epochs", default=5, type=int)
         parser.add_argument("--batch_size", default=16, type=int)
-        parser.add_argument("--x_dim", default=224*224, type=int)
-        parser.add_argument("--latent_dim", default=20, type=int)
-        parser.add_argument("--hidden_dim", default=400, type=int)
+        parser.add_argument("--fc_flattened_dim", default=224*224, type=int)
+        parser.add_argument("--fc_latent_dim", default=20, type=int)
+        parser.add_argument("--fc_hidden_dim", default=400, type=int)
+        parser.add_argument("--conv_img_dim", default=33, type=int)
 
         parser.add_argument("--use_wandb", default=True, type=bool)
         parser.add_argument("--plot_results", default=True, type=bool)
@@ -56,9 +56,7 @@ class Trainer:
         return reproduction_loss, 0.01*KLD
 
     def train(self):
-
-        # img_size = 224  # use if model_conv
-        img_size = 33  # Use if model_conv32
+        img_size = self.args.conv_img_dim  # 33 if model_conv32, else 224 for model_conv224
 
         # Init wandb
         if self.args.use_wandb:
@@ -67,28 +65,29 @@ class Trainer:
         # Training device
         DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
 
-        # Data loading
-
         # Get train and test
         train_path = "/Users/heshe/Desktop/mlops/image-restoration/data/raw/"
         ab_imgs = np.load(train_path + "/ab/ab/ab1.npy")
         gray_imgs = np.load(train_path + "/l/gray_scale.npy")[:10000, :, :]
 
-        #rbg_images = get_rbg_from_lab(gray_imgs, ab_imgs, 224, n=10)
-        #rbg_images = torch.from_numpy(rbg_images)/255
+        train_X = gray_imgs[:9000, :, :]
+        test_X = gray_imgs[9000:, :, :]
 
-        train_X = gray_imgs[:10, :, :]
-        test_X = gray_imgs[100:110, :, :]
+        train_Y = ab_imgs[:9000, :, :, :]
+        test_Y = ab_imgs[9000:, :, :, :]
 
-        train_Y = ab_imgs[:10, :, :, :]
-        test_Y = ab_imgs[100:110, :, :, :]
+        # train_X = gray_imgs[:100, :, :]
+        # test_X = gray_imgs[10:30, :, :]
+
+        # train_Y = ab_imgs[:100, :, :, :]
+        # test_Y = ab_imgs[10:30, :, :, :]
 
         # Init model
         if self.args.use_CNN:
             model = ConvVAE()
         else:
-            encoder = Encoder(input_dim=self.args.x_dim, hidden_dim=self.args.hidden_dim, latent_dim=self.args.latent_dim)
-            decoder = Decoder(latent_dim=self.args.latent_dim, hidden_dim=self.args.hidden_dim, output_dim=self.args.x_dim)
+            encoder = Encoder(input_dim=self.args.fc_flattened_dim, fc_hidden_dim=self.args.fc_hidden_dim, fc_latent_dim=self.args.fc_latent_dim)
+            decoder = Decoder(fc_latent_dim=self.args.fc_latent_dim, fc_hidden_dim=self.args.fc_hidden_dim, output_dim=self.args.fc_flattened_dim)
             model = Net(Encoder=encoder, Decoder=decoder).to(DEVICE)
 
         if self.args.use_wandb:
@@ -110,6 +109,7 @@ class Trainer:
                 l1 = train_i*self.args.batch_size
                 l2 = train_i*self.args.batch_size + self.args.batch_size
                 if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
+                    train_i -= 1
                     break
                 X = train_X[l1:l2, :, :]
                 Y = train_Y[l1:l2, :, :, :]
@@ -148,6 +148,7 @@ class Trainer:
                     l1 = eval_i*self.args.batch_size
                     l2 = eval_i*self.args.batch_size + self.args.batch_size
                     if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
+                        eval_i -= 1
                         break
                     X = test_X[l1:l2, :, :]
                     Y = test_Y[l1:l2, :, :, :]
@@ -162,8 +163,8 @@ class Trainer:
                     if self.args.use_CNN:
                         X = X[:, None, :, :]
                     else:
-                        X = X.view(self.args.batch_size, self.args.x_dim)
-                        Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
+                        X = X.view(self.args.batch_size, self.args.fc_flattened_dim)
+                        Y = Y.view(self.args.batch_size, self.args.fc_flattened_dim, 2)
 
                     X = X.to(DEVICE)
 
@@ -221,8 +222,8 @@ class Trainer:
                     X = X[:, None, :, :]
 
                 else:
-                    X = X.view(n_images_to_log, self.args.x_dim)
-                    Y = Y.view(n_images_to_log, self.args.x_dim, 2)
+                    X = X.view(n_images_to_log, self.args.fc_flattened_dim)
+                    Y = Y.view(n_images_to_log, self.args.fc_flattened_dim, 2)
 
                 X = X.to(DEVICE)
 
