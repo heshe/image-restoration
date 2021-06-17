@@ -3,31 +3,30 @@ Adapted from
 https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_AutoEncoder.ipynb
 A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
+import argparse
+import sys
+
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
-import sys
-import argparse
-import numpy as np
 import tqdm
-import cv2
-import wandb
-
+from kornia.geometry.transform import resize
 from PIL import Image
 from torch.optim import Adam
 
-from src.models.model_FC import Encoder, Decoder, Net
+import wandb
 from src.models.model_conv32 import ConvVAE
-from kornia.geometry.transform import resize
+from src.models.model_FC import Decoder, Encoder, Net
 
 
 class Trainer:
-
     def __init__(self):
         parser = argparse.ArgumentParser(description="Training arguments")
         parser.add_argument("--lr", default=1e-3, type=float)
         parser.add_argument("--n_epochs", default=5, type=int)
         parser.add_argument("--batch_size", default=16, type=int)
-        parser.add_argument("--fc_flattened_dim", default=224*224, type=int)
+        parser.add_argument("--fc_flattened_dim", default=224 * 224, type=int)
         parser.add_argument("--fc_latent_dim", default=20, type=int)
         parser.add_argument("--fc_hidden_dim", default=400, type=int)
         parser.add_argument("--conv_img_dim", default=33, type=int)
@@ -37,7 +36,10 @@ class Trainer:
         parser.add_argument("--use_cuda", default=False, type=bool)
         parser.add_argument("--use_CNN", default=True, type=bool)
 
-        parser.add_argument("--dataset_path", default="/Users/heshe/Desktop/mlops/cookiecutter_project/data")
+        parser.add_argument(
+            "--dataset_path",
+            default="/Users/heshe/Desktop/mlops/cookiecutter_project/data",
+        )
         parser.add_argument("--run_name", default="default_run")
         # import sys
         # sys.argv=[""]
@@ -46,49 +48,117 @@ class Trainer:
         print(sys.argv)
 
     def loss_function(self, x, x_hat, mean, log_var):
-        reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
+        reproduction_loss = nn.functional.binary_cross_entropy(
+            x_hat, x, reduction="sum"
+        )
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
         return reproduction_loss, KLD
 
     def loss_function2(self, x, x_hat, mean, log_var):
         reproduction_loss = nn.functional.mse_loss(x_hat, x, reduction="sum")
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
-        return reproduction_loss, 0.01*KLD
+        return reproduction_loss, 0.01 * KLD
+
+    def log_images_to_wandb(self, train_X, train_Y, model, img_size):
+        # Generate reconstructions
+        if self.args.use_wandb:
+
+            n_images_to_log = 10  # Right now: cannot be more than #test_imgs = 1000
+
+            model.eval()
+            with torch.no_grad():
+
+                X = train_X[:n_images_to_log, :, :]
+                Y = train_Y[:n_images_to_log, :, :, :]
+
+                X = torch.from_numpy(X) / 255
+                Y = torch.from_numpy(Y) / 255
+
+                Y = Y.permute(0, 3, 1, 2)
+                X = resize(X, (img_size, img_size))
+                Y = resize(Y, (img_size, img_size))
+
+                if self.args.use_CNN:
+                    X = X[:, None, :, :]
+
+                else:
+                    X = X.view(n_images_to_log, self.args.fc_flattened_dim)
+                    Y = Y.view(n_images_to_log, self.args.fc_flattened_dim, 2)
+
+                X = X.to(self.DEVICE)
+
+                X_hat, _, _ = model(X)
+
+            X_origin = get_rbg_from_lab(
+                (X * 255).squeeze(),
+                (Y * 255).permute(0, 2, 3, 1),
+                img_size=img_size,
+                n=n_images_to_log,
+            )
+
+            X_hat = get_rbg_from_lab(
+                (X * 255).squeeze(),
+                (X_hat * 255).permute(0, 2, 3, 1),
+                img_size=img_size,
+                n=n_images_to_log,
+            )
+
+            orig_images = []
+            recon_images = []
+            for i in range(n_images_to_log):
+                im_o = Image.fromarray(X_origin[i])
+                orig_images.append(im_o)
+                im_r = Image.fromarray(X_hat[i])
+                recon_images.append(im_r)
+
+            wandb.log({"Originals": [wandb.Image(i) for i in orig_images]})
+
+            wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
 
     def train(self):
-        img_size = self.args.conv_img_dim  # 33 if model_conv32, else 224 for model_conv224
+        img_size = (
+            self.args.conv_img_dim
+        )  # 33 if model_conv32, else 224 for model_conv224
 
         # Init wandb
         if self.args.use_wandb:
             wandb.init(config=self.args)
 
         # Training device
-        DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
+        self.DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
 
         # Get train and test
         train_path = "/Users/heshe/Desktop/mlops/image-restoration/data/raw/"
         ab_imgs = np.load(train_path + "/ab/ab/ab1.npy")
         gray_imgs = np.load(train_path + "/l/gray_scale.npy")[:10000, :, :]
 
-        train_X = gray_imgs[:9000, :, :]
-        test_X = gray_imgs[9000:, :, :]
+        # train_X = gray_imgs[:9000, :, :]
+        # test_X = gray_imgs[9000:, :, :]
 
-        train_Y = ab_imgs[:9000, :, :, :]
-        test_Y = ab_imgs[9000:, :, :, :]
+        # train_Y = ab_imgs[:9000, :, :, :]
+        # test_Y = ab_imgs[9000:, :, :, :]
 
-        # train_X = gray_imgs[:100, :, :]
-        # test_X = gray_imgs[10:30, :, :]
+        train_X = gray_imgs[:10, :, :]
+        test_X = gray_imgs[10:12, :, :]
 
-        # train_Y = ab_imgs[:100, :, :, :]
-        # test_Y = ab_imgs[10:30, :, :, :]
+        train_Y = ab_imgs[:10, :, :, :]
+        test_Y = ab_imgs[10:12, :, :, :]
 
         # Init model
         if self.args.use_CNN:
             model = ConvVAE()
         else:
-            encoder = Encoder(input_dim=self.args.fc_flattened_dim, fc_hidden_dim=self.args.fc_hidden_dim, fc_latent_dim=self.args.fc_latent_dim)
-            decoder = Decoder(fc_latent_dim=self.args.fc_latent_dim, fc_hidden_dim=self.args.fc_hidden_dim, output_dim=self.args.fc_flattened_dim)
-            model = Net(Encoder=encoder, Decoder=decoder).to(DEVICE)
+            encoder = Encoder(
+                input_dim=self.args.fc_flattened_dim,
+                fc_hidden_dim=self.args.fc_hidden_dim,
+                fc_latent_dim=self.args.fc_latent_dim,
+            )
+            decoder = Decoder(
+                fc_latent_dim=self.args.fc_latent_dim,
+                fc_hidden_dim=self.args.fc_hidden_dim,
+                output_dim=self.args.fc_flattened_dim,
+            )
+            model = Net(Encoder=encoder, Decoder=decoder).to(self.DEVICE)
 
         if self.args.use_wandb:
             wandb.watch(model, log_freq=100)
@@ -105,30 +175,33 @@ class Trainer:
             # ______________TRAIN______________
             model.train()
             # for batch_idx, (x, _) in enumerate(train_loader):
-            for train_i in tqdm.tqdm(range(int(train_X.shape[0]/self.args.batch_size))):
-                l1 = train_i*self.args.batch_size
-                l2 = train_i*self.args.batch_size + self.args.batch_size
+            for train_i in tqdm.tqdm(
+                range(int(train_X.shape[0] / self.args.batch_size))
+            ):
+                l1 = train_i * self.args.batch_size
+                l2 = train_i * self.args.batch_size + self.args.batch_size
                 if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
                     train_i -= 1
                     break
                 X = train_X[l1:l2, :, :]
                 Y = train_Y[l1:l2, :, :, :]
 
-                X = torch.from_numpy(X)/255
-                Y = torch.from_numpy(Y)/255
-            
+                X = torch.from_numpy(X) / 255
+                Y = torch.from_numpy(Y) / 255
+
                 Y = Y.permute(0, 3, 1, 2)
                 X = resize(X, (img_size, img_size))
                 Y = resize(Y, (img_size, img_size))
 
                 if self.args.use_CNN:
+
                     X = X[:, None, :, :]
                 else:
-                    X = X.view(self.args.batch_size, img_size*img_size)
-                    Y = Y.view(self.args.batch_size, img_size*img_size, 2)
+                    X = X.view(self.args.batch_size, img_size * img_size)
+                    Y = Y.view(self.args.batch_size, img_size * img_size, 2)
 
-                X = X.to(DEVICE)
-                Y = Y.to(DEVICE)
+                X = X.to(self.DEVICE)
+                Y = Y.to(self.DEVICE)
 
                 optimizer.zero_grad()
 
@@ -144,18 +217,20 @@ class Trainer:
             # ______________VAL______________
             with torch.no_grad():
                 model.eval()
-                for eval_i in tqdm.tqdm(range(int(test_X.shape[0]/self.args.batch_size))):
-                    l1 = eval_i*self.args.batch_size
-                    l2 = eval_i*self.args.batch_size + self.args.batch_size
+                for eval_i in tqdm.tqdm(
+                    range(int(test_X.shape[0] / self.args.batch_size))
+                ):
+                    l1 = eval_i * self.args.batch_size
+                    l2 = eval_i * self.args.batch_size + self.args.batch_size
                     if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
                         eval_i -= 1
                         break
                     X = test_X[l1:l2, :, :]
                     Y = test_Y[l1:l2, :, :, :]
 
-                    X = torch.from_numpy(X)/255
-                    Y = torch.from_numpy(Y)/255
-            
+                    X = torch.from_numpy(X) / 255
+                    Y = torch.from_numpy(Y) / 255
+
                     Y = Y.permute(0, 3, 1, 2)
                     X = resize(X, (img_size, img_size))
                     Y = resize(Y, (img_size, img_size))
@@ -166,7 +241,7 @@ class Trainer:
                         X = X.view(self.args.batch_size, self.args.fc_flattened_dim)
                         Y = Y.view(self.args.batch_size, self.args.fc_flattened_dim, 2)
 
-                    X = X.to(DEVICE)
+                    X = X.to(self.DEVICE)
 
                     X_hat, mean, log_var = model(X)
                     rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
@@ -183,75 +258,28 @@ class Trainer:
                         "train_loss": train_loss / (train_i * self.args.batch_size),
                         "test_loss": test_loss / (eval_i * self.args.batch_size),
                         "train_rec": train_rec / (train_i * self.args.batch_size),
-                        "train_kld": train_kld / (train_i * self.args.batch_size)
+                        "train_kld": train_kld / (train_i * self.args.batch_size),
                     }
                 )
 
             # Save current model
             if epoch % 5 == 0:
                 save_path = f"models/{self.args.run_name}_model{epoch}.pth"
-                torch.save(
-                    model.state_dict(), save_path
-                )
+                torch.save(model.state_dict(), save_path)
 
-            print("\tEpoch", epoch + 1, "complete!",
-                  "\tAverage train Loss: ", train_loss / (train_i * self.args.batch_size),
-                  "\tAverage test loss: ", test_loss / (eval_i * self.args.batch_size))
+            print(
+                "\tEpoch",
+                epoch + 1,
+                "complete!",
+                "\tAverage train Loss: ",
+                train_loss / (train_i * self.args.batch_size),
+                "\tAverage test loss: ",
+                test_loss / (eval_i * self.args.batch_size),
+            )
 
         print("Finish training")
 
-        # Generate reconstructions
-        if self.args.use_wandb:
-
-            n_images_to_log = 10  # Right now: cannot be more than #test_imgs = 1000
-
-            model.eval()
-            with torch.no_grad():
-
-                X = train_X[:n_images_to_log, :, :]
-                Y = train_Y[:n_images_to_log, :, :, :]
-
-                X = torch.from_numpy(X)/255
-                Y = torch.from_numpy(Y)/255
-
-                Y = Y.permute(0, 3, 1, 2)
-                X = resize(X, (img_size, img_size))
-                Y = resize(Y, (img_size, img_size))
-
-                if self.args.use_CNN:
-                    X = X[:, None, :, :]
-
-                else:
-                    X = X.view(n_images_to_log, self.args.fc_flattened_dim)
-                    Y = Y.view(n_images_to_log, self.args.fc_flattened_dim, 2)
-
-                X = X.to(DEVICE)
-
-                X_hat, _, _ = model(X)
-
-            X_origin = get_rbg_from_lab((X*255).squeeze(),
-                                        (Y*255).permute(0, 2, 3, 1),
-                                        img_size=img_size,
-                                        n=n_images_to_log)
-
-            X_hat = get_rbg_from_lab((X*255).squeeze(),
-                                     (X_hat*255).permute(0, 2, 3, 1),
-                                     img_size=img_size,
-                                     n=n_images_to_log)
-
-            orig_images = []
-            recon_images = []
-            print(X_origin.shape)
-            for i in range(n_images_to_log):
-                im_o = Image.fromarray(X_origin[i])
-                orig_images.append(im_o)
-                im_r = Image.fromarray(X_hat[i])
-                recon_images.append(im_r)
-
-            print(len(orig_images))
-            wandb.log({"Originals": [wandb.Image(i) for i in orig_images]})
-
-            wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
+        self.log_images_to_wandb(train_X, train_Y, model, img_size)
 
 
 def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
