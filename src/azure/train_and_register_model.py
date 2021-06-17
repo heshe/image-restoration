@@ -12,7 +12,7 @@ from azureml.widgets import RunDetails
 parser = argparse.ArgumentParser(description="Deployment arguments")
 
 # Operations
-parser.add_argument("--data_name", default="image_resto", type=str)
+parser.add_argument("--data_name", default="image-resto", type=str)
 parser.add_argument("--experiment_name", default="image_resto", type=str)
 
 # Hyperparameters
@@ -74,24 +74,24 @@ script_config = ScriptRunConfig(
         args.n_epochs,
         "--batch_size",
         args.batch_size,
-        "--x_dim",
-        args.x_dim,
-        "--latent_dim",
-        args.latent_dim,
-        "--hidden_dim",
-        args.hidden_dim,
-        "--use_wandb",
-        args.use_wandb,
-        "--plot_results",
-        False,
-        "--use_cuda",
-        args.use_cuda,
-        "--make_reconstructions",
-        args.make_reconstructions,
-        "--save_model",
-        args.save_model,
-        "--model_name",
-        args.model_name,
+        #"--x_dim",
+        #args.x_dim,
+        #"--latent_dim",
+        #args.latent_dim,
+        #"--hidden_dim",
+        #args.hidden_dim,
+        #"--use_wandb",
+        #args.use_wandb,
+        #"--plot_results",
+        #False,
+        #"--use_cuda",
+        #args.use_cuda,
+        #"--make_reconstructions",
+        #args.make_reconstructions,
+        #"--save_model",
+        #args.save_model,
+        #"--model_name",
+        #args.model_name,
         "--input-data",
         image_data.as_named_input("image_resto").as_mount(),
     ],
@@ -102,7 +102,6 @@ script_config = ScriptRunConfig(
 experiment_name = args.experiment_name
 experiment = Experiment(workspace=ws, name=experiment_name)
 run = experiment.submit(config=script_config)
-RunDetails(run).show()
 run.wait_for_completion()
 
 # Get logged metrics and files
