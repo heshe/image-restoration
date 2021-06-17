@@ -14,12 +14,11 @@ import cv2
 import wandb
 
 from PIL import Image
-# from torchvision.utils import save_image
-from torchvision.datasets import MNIST
 from torch.optim import Adam
 
-from src.models.model_FC import Encoder, Decoder, Model
-from src.models.model_conv import ConvVAE
+from src.models.model_FC import Encoder, Decoder, Net
+from src.models.model_conv32 import ConvVAE
+from kornia.geometry.transform import resize
 
 
 class Trainer:
@@ -51,7 +50,16 @@ class Trainer:
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
         return reproduction_loss, KLD
 
+    def loss_function2(self, x, x_hat, mean, log_var):
+        reproduction_loss = nn.functional.mse_loss(x_hat, x, reduction="sum")
+        KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
+        return reproduction_loss, 0.01*KLD
+
     def train(self):
+
+        # img_size = 224  # use if model_conv
+        img_size = 33  # Use if model_conv32
+
         # Init wandb
         if self.args.use_wandb:
             wandb.init(config=self.args)
@@ -66,11 +74,14 @@ class Trainer:
         ab_imgs = np.load(train_path + "/ab/ab/ab1.npy")
         gray_imgs = np.load(train_path + "/l/gray_scale.npy")[:10000, :, :]
 
-        train_X = gray_imgs[:9000, :, :]
-        test_X = gray_imgs[9000:, :, :]
+        #rbg_images = get_rbg_from_lab(gray_imgs, ab_imgs, 224, n=10)
+        #rbg_images = torch.from_numpy(rbg_images)/255
 
-        train_Y = ab_imgs[:9000, :, :, :]
-        test_Y = ab_imgs[9000:, :, :, :]
+        train_X = gray_imgs[:10, :, :]
+        test_X = gray_imgs[100:110, :, :]
+
+        train_Y = ab_imgs[:10, :, :, :]
+        test_Y = ab_imgs[100:110, :, :, :]
 
         # Init model
         if self.args.use_CNN:
@@ -78,7 +89,7 @@ class Trainer:
         else:
             encoder = Encoder(input_dim=self.args.x_dim, hidden_dim=self.args.hidden_dim, latent_dim=self.args.latent_dim)
             decoder = Decoder(latent_dim=self.args.latent_dim, hidden_dim=self.args.hidden_dim, output_dim=self.args.x_dim)
-            model = Model(Encoder=encoder, Decoder=decoder).to(DEVICE)
+            model = Net(Encoder=encoder, Decoder=decoder).to(DEVICE)
 
         if self.args.use_wandb:
             wandb.watch(model, log_freq=100)
@@ -105,15 +116,16 @@ class Trainer:
 
                 X = torch.from_numpy(X)/255
                 Y = torch.from_numpy(Y)/255
+            
+                Y = Y.permute(0, 3, 1, 2)
+                X = resize(X, (img_size, img_size))
+                Y = resize(Y, (img_size, img_size))
 
                 if self.args.use_CNN:
                     X = X[:, None, :, :]
-                    Y = Y[:, None, :, :]
-
-                    Y = Y.view(self.args.batch_size, 2, 224, 224)
                 else:
-                    X = X.view(self.args.batch_size, self.args.x_dim)
-                    Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
+                    X = X.view(self.args.batch_size, img_size*img_size)
+                    Y = Y.view(self.args.batch_size, img_size*img_size, 2)
 
                 X = X.to(DEVICE)
                 Y = Y.to(DEVICE)
@@ -121,7 +133,7 @@ class Trainer:
                 optimizer.zero_grad()
 
                 X_hat, mean, log_var = model(X)
-                rec, kld = self.loss_function(Y, X_hat, mean, log_var)
+                rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
                 loss = rec + kld
 
                 train_loss += loss.item()
@@ -142,12 +154,13 @@ class Trainer:
 
                     X = torch.from_numpy(X)/255
                     Y = torch.from_numpy(Y)/255
+            
+                    Y = Y.permute(0, 3, 1, 2)
+                    X = resize(X, (img_size, img_size))
+                    Y = resize(Y, (img_size, img_size))
 
                     if self.args.use_CNN:
                         X = X[:, None, :, :]
-                        Y = Y[:, None, :, :]
-
-                        Y = Y.view(self.args.batch_size, 2, 224, 224)
                     else:
                         X = X.view(self.args.batch_size, self.args.x_dim)
                         Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
@@ -155,7 +168,7 @@ class Trainer:
                     X = X.to(DEVICE)
 
                     X_hat, mean, log_var = model(X)
-                    rec, kld = self.loss_function(Y, X_hat, mean, log_var)
+                    rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
                     loss = rec + kld
 
                     train_rec += rec.item()
@@ -166,10 +179,10 @@ class Trainer:
             if self.args.use_wandb:
                 wandb.log(
                     {
-                        "train_loss": train_loss,
-                        "test_loss": test_loss,
-                        "train_rec": train_rec,
-                        "train_kld": train_kld
+                        "train_loss": train_loss / (train_i * self.args.batch_size),
+                        "test_loss": test_loss / (eval_i * self.args.batch_size),
+                        "train_rec": train_rec / (train_i * self.args.batch_size),
+                        "train_kld": train_kld / (train_i * self.args.batch_size)
                     }
                 )
 
@@ -194,17 +207,19 @@ class Trainer:
             model.eval()
             with torch.no_grad():
 
-                X = test_X[:n_images_to_log, :, :]
-                Y = test_Y[:n_images_to_log, :, :, :]
+                X = train_X[:n_images_to_log, :, :]
+                Y = train_Y[:n_images_to_log, :, :, :]
 
                 X = torch.from_numpy(X)/255
                 Y = torch.from_numpy(Y)/255
 
+                Y = Y.permute(0, 3, 1, 2)
+                X = resize(X, (img_size, img_size))
+                Y = resize(Y, (img_size, img_size))
+
                 if self.args.use_CNN:
                     X = X[:, None, :, :]
-                    Y = Y[:, None, :, :]
 
-                    Y = Y.view(n_images_to_log, 2, 224, 224)
                 else:
                     X = X.view(n_images_to_log, self.args.x_dim)
                     Y = Y.view(n_images_to_log, self.args.x_dim, 2)
@@ -212,19 +227,15 @@ class Trainer:
                 X = X.to(DEVICE)
 
                 X_hat, _, _ = model(X)
-                    # break
 
-            # res_imgs_path = "/Users/heshe/Desktop/mlops/image-restoration/reports/figures/"
-
-            # X = X.view(self.args.batch_size, self.args.x_dim)
-            # Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
-
-            X_origin = get_rbg_from_lab((X*255).view(n_images_to_log, 224, 224),
-                                        (Y*255).view(n_images_to_log, 224, 224, 2),
+            X_origin = get_rbg_from_lab((X*255).squeeze(),
+                                        (Y*255).permute(0, 2, 3, 1),
+                                        img_size=img_size,
                                         n=n_images_to_log)
 
-            X_hat = get_rbg_from_lab((X*255).view(n_images_to_log, 224, 224),
-                                     (X_hat*255).view(n_images_to_log, 224, 224, 2),
+            X_hat = get_rbg_from_lab((X*255).squeeze(),
+                                     (X_hat*255).permute(0, 2, 3, 1),
+                                     img_size=img_size,
                                      n=n_images_to_log)
 
             orig_images = []
@@ -233,10 +244,8 @@ class Trainer:
             for i in range(n_images_to_log):
                 im_o = Image.fromarray(X_origin[i])
                 orig_images.append(im_o)
-                # im.save(f"/Users/heshe/Desktop/mlops/image-restoration/reports/figures/orig/img{i}.png")
                 im_r = Image.fromarray(X_hat[i])
                 recon_images.append(im_r)
-                # im.save(f"/Users/heshe/Desktop/mlops/image-restoration/reports/figures/recon/img{i}.png")
 
             print(len(orig_images))
             wandb.log({"Originals": [wandb.Image(i) for i in orig_images]})
@@ -244,9 +253,9 @@ class Trainer:
             wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
 
 
-def get_rbg_from_lab(gray_imgs, ab_imgs, n = 10):
+def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
     # create an empty array to store images
-    imgs = np.zeros((n, 224, 224, 3))
+    imgs = np.zeros((n, img_size, img_size, 3))
 
     imgs[:, :, :, 0] = gray_imgs[0:n:]
     imgs[:, :, :, 1:] = ab_imgs[0:n:]
