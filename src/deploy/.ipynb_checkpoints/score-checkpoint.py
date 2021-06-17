@@ -2,13 +2,19 @@ import json
 import joblib
 import numpy as np
 import torch
+import os
 from azureml.core.model import Model
+import dotenv
 
 # Called when the service is loaded
 def init():
+    project_dir = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+    dotenv_path = os.path.join(project_dir, '.env')
+    dotenv.load_dotenv(dotenv_path)
     global model
     # Get the path to the deployed model file and load it
-    model_path = Model.get_model_path('image_resto')
+    print(os.getenv("AZUREML_MODEL_DIR"))
+    model_path = os.path.join(os.getenv('AZUREML_MODEL_DIR'), 'image_resto.pkl')
     model = joblib.load(model_path)
 
 # Called when a request is received
@@ -19,10 +25,10 @@ def run(raw_data):
     data = data.view(-1, 224*224)
     
     # Get the reconstruction from the model
-    reconstruction = model(data)
+    reconstruction = model(data.float())
 
     # Return the predictions as JSON
-    return json.dumps(reconstruction)
+    return json.dumps([rec.tolist() for rec in reconstruction])
 
 
 def scale_data(data):
