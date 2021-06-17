@@ -15,20 +15,32 @@ class ConvVAE(nn.Module):
 
         # ____________________ENCODER____________________
         self.enc1 = nn.Conv2d(
-            in_channels=image_channels, out_channels=init_channels, kernel_size=kernel_size,
-            stride=2, padding=1
+            in_channels=image_channels,
+            out_channels=init_channels,
+            kernel_size=kernel_size,
+            stride=2,
+            padding=1,
         )
         self.enc2 = nn.Conv2d(
-            in_channels=init_channels, out_channels=init_channels*2, kernel_size=kernel_size,
-            stride=2, padding=1
+            in_channels=init_channels,
+            out_channels=init_channels * 2,
+            kernel_size=kernel_size,
+            stride=2,
+            padding=1,
         )
         self.enc3 = nn.Conv2d(
-            in_channels=init_channels*2, out_channels=init_channels*4, kernel_size=kernel_size,
-            stride=2, padding=1
+            in_channels=init_channels * 2,
+            out_channels=init_channels * 4,
+            kernel_size=kernel_size,
+            stride=2,
+            padding=1,
         )
         self.enc4 = nn.Conv2d(
-            in_channels=init_channels*4, out_channels=latent_dim, kernel_size=kernel_size,
-            stride=2, padding=0
+            in_channels=init_channels * 4,
+            out_channels=latent_dim,
+            kernel_size=kernel_size,
+            stride=2,
+            padding=0,
         )
         # fully connected layers for learning representations
         self.fc1 = nn.Linear(latent_dim, latent_dim)
@@ -38,25 +50,40 @@ class ConvVAE(nn.Module):
 
         # ____________________DECODER____________________
         self.dec1 = nn.ConvTranspose2d(
-            in_channels=self.latent_dim, out_channels=init_channels*16, kernel_size=kernel_size,
-            stride=1, padding=0
+            in_channels=self.latent_dim,
+            out_channels=init_channels * 16,
+            kernel_size=kernel_size,
+            stride=1,
+            padding=0,
         )
         self.dec2 = nn.ConvTranspose2d(
-            in_channels=init_channels*16, out_channels=init_channels*8, kernel_size=kernel_size,
-            stride=2, padding=2
+            in_channels=init_channels * 16,
+            out_channels=init_channels * 8,
+            kernel_size=kernel_size,
+            stride=2,
+            padding=2,
         )
         self.dec3 = nn.ConvTranspose2d(
-            in_channels=init_channels*8, out_channels=init_channels*4, kernel_size=kernel_size,
-            stride=3, padding=2
+            in_channels=init_channels * 8,
+            out_channels=init_channels * 4,
+            kernel_size=kernel_size,
+            stride=3,
+            padding=2,
         )
         self.dec4 = nn.ConvTranspose2d(
-            in_channels=init_channels*4, out_channels=init_channels*2, kernel_size=kernel_size+1,
-            stride=4, padding=2
+            in_channels=init_channels * 4,
+            out_channels=init_channels * 2,
+            kernel_size=kernel_size + 1,
+            stride=4,
+            padding=2,
         )
 
         self.dec5 = nn.ConvTranspose2d(
-            in_channels=init_channels*2, out_channels=2, kernel_size=kernel_size+2,
-            stride=4, padding=3
+            in_channels=init_channels * 2,
+            out_channels=2,
+            kernel_size=kernel_size + 2,
+            stride=4,
+            padding=3,
         )
 
     def reparameterize(self, mu, log_var):
@@ -64,7 +91,7 @@ class ConvVAE(nn.Module):
         :param mu: mean from the encoder's latent space
         :param log_var: log variance from the encoder's latent space
         """
-        std = torch.exp(0.5*log_var)  # standard deviation
+        std = torch.exp(0.5 * log_var)  # standard deviation
         eps = torch.randn_like(std)  # `randn_like` as we need the same size
         sample = mu + (eps * std)  # sampling
         return sample

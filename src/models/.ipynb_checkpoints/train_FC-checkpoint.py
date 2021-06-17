@@ -3,32 +3,31 @@ Adapted from
 https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_AutoEncoder.ipynb
 A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
+import argparse
+import sys
+
+import cv2
+import numpy as np
 import torch
 import torch.nn as nn
 import torchvision.transforms as transforms
-import sys
-import argparse
-import numpy as np
 import tqdm
-import cv2
-import wandb
-
 from PIL import Image
+from torch.optim import Adam
 # from torchvision.utils import save_image
 from torchvision.datasets import MNIST
-from torch.optim import Adam
 
-from src.models.model_FC import Encoder, Decoder, Model
+import wandb
+from src.models.model_FC import Decoder, Encoder, Model
 
 
 class Trainer:
-
     def __init__(self):
         parser = argparse.ArgumentParser(description="Training arguments")
         parser.add_argument("--lr", default=1e-3, type=float)
         parser.add_argument("--n_epochs", default=5, type=int)
         parser.add_argument("--batch_size", default=16, type=int)
-        parser.add_argument("--x_dim", default=224*224, type=int)
+        parser.add_argument("--x_dim", default=224 * 224, type=int)
         parser.add_argument("--latent_dim", default=20, type=int)
         parser.add_argument("--hidden_dim", default=400, type=int)
 
@@ -36,14 +35,19 @@ class Trainer:
         parser.add_argument("--plot_results", default=True, type=bool)
         parser.add_argument("--use_cuda", default=False, type=bool)
 
-        parser.add_argument("--dataset_path", default="/Users/heshe/Desktop/mlops/cookiecutter_project/data")
+        parser.add_argument(
+            "--dataset_path",
+            default="/Users/heshe/Desktop/mlops/cookiecutter_project/data",
+        )
         parser.add_argument("--run_name", default="default_run")
 
         self.args = parser.parse_args(sys.argv[1:])
         print(sys.argv)
 
     def loss_function(self, x, x_hat, mean, log_var):
-        reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction="sum")
+        reproduction_loss = nn.functional.binary_cross_entropy(
+            x_hat, x, reduction="sum"
+        )
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
         return reproduction_loss + KLD
 
@@ -59,10 +63,16 @@ class Trainer:
         mnist_transform = transforms.Compose([transforms.ToTensor()])
 
         train_dataset = MNIST(
-            self.args.dataset_path + "/MNIST_train", transform=mnist_transform, train=True, download=True
+            self.args.dataset_path + "/MNIST_train",
+            transform=mnist_transform,
+            train=True,
+            download=True,
         )
         test_dataset = MNIST(
-            self.args.dataset_path + "/MNIST_test", transform=mnist_transform, train=False, download=True
+            self.args.dataset_path + "/MNIST_test",
+            transform=mnist_transform,
+            train=False,
+            download=True,
         )
 
         # Get train and test
@@ -77,12 +87,20 @@ class Trainer:
         test_Y = ab_imgs[9000:, :, :, :]
 
         # Init data loaders
-        #train_loader = DataLoader(dataset=train_dataset, batch_size=self.args.batch_size, shuffle=True)
-        #test_loader = DataLoader(dataset=test_dataset, batch_size=self.args.batch_size, shuffle=False)
+        # train_loader = DataLoader(dataset=train_dataset, batch_size=self.args.batch_size, shuffle=True)
+        # test_loader = DataLoader(dataset=test_dataset, batch_size=self.args.batch_size, shuffle=False)
 
         # Init model
-        encoder = Encoder(input_dim=self.args.x_dim, hidden_dim=self.args.hidden_dim, latent_dim=self.args.latent_dim)
-        decoder = Decoder(latent_dim=self.args.latent_dim, hidden_dim=self.args.hidden_dim, output_dim=self.args.x_dim)
+        encoder = Encoder(
+            input_dim=self.args.x_dim,
+            hidden_dim=self.args.hidden_dim,
+            latent_dim=self.args.latent_dim,
+        )
+        decoder = Decoder(
+            latent_dim=self.args.latent_dim,
+            hidden_dim=self.args.hidden_dim,
+            output_dim=self.args.x_dim,
+        )
         model = Model(Encoder=encoder, Decoder=decoder).to(DEVICE)
 
         if self.args.use_wandb:
@@ -98,16 +116,18 @@ class Trainer:
             # ______________TRAIN______________
             model.train()
             # for batch_idx, (x, _) in enumerate(train_loader):
-            for train_i in tqdm.tqdm(range(int(train_X.shape[0]/self.args.batch_size))):
-                l1 = train_i*self.args.batch_size
-                l2 = train_i*self.args.batch_size + self.args.batch_size
+            for train_i in tqdm.tqdm(
+                range(int(train_X.shape[0] / self.args.batch_size))
+            ):
+                l1 = train_i * self.args.batch_size
+                l2 = train_i * self.args.batch_size + self.args.batch_size
                 if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
                     break
                 X = train_X[l1:l2, :, :]
                 Y = train_Y[l1:l2, :, :, :]
 
-                X = torch.from_numpy(X)/255
-                Y = torch.from_numpy(Y)/255
+                X = torch.from_numpy(X) / 255
+                Y = torch.from_numpy(Y) / 255
 
                 X = X.view(self.args.batch_size, self.args.x_dim)
                 Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
@@ -127,16 +147,18 @@ class Trainer:
             # ______________VAL______________
             with torch.no_grad():
                 model.eval()
-                for eval_i in tqdm.tqdm(range(int(test_X.shape[0]/self.args.batch_size))):
-                    l1 = eval_i*self.args.batch_size
-                    l2 = eval_i*self.args.batch_size + self.args.batch_size
+                for eval_i in tqdm.tqdm(
+                    range(int(test_X.shape[0] / self.args.batch_size))
+                ):
+                    l1 = eval_i * self.args.batch_size
+                    l2 = eval_i * self.args.batch_size + self.args.batch_size
                     if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
                         break
                     X = test_X[l1:l2, :, :]
                     Y = test_Y[l1:l2, :, :, :]
 
-                    X = torch.from_numpy(X)/255
-                    Y = torch.from_numpy(Y)/255
+                    X = torch.from_numpy(X) / 255
+                    Y = torch.from_numpy(Y) / 255
 
                     X = X.view(self.args.batch_size, self.args.x_dim)
                     Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
@@ -160,13 +182,17 @@ class Trainer:
             # Save current model
             if epoch % 5 == 0:
                 save_path = f"models/{self.args.run_name}_model{epoch}.pth"
-                torch.save(
-                    model.state_dict(), save_path
-                )
+                torch.save(model.state_dict(), save_path)
 
-            print("\tEpoch", epoch + 1, "complete!",
-                  "\tAverage train Loss: ", train_loss / (train_i * self.args.batch_size),
-                  "\tAverage test loss: ", test_loss / (eval_i * self.args.batch_size))
+            print(
+                "\tEpoch",
+                epoch + 1,
+                "complete!",
+                "\tAverage train Loss: ",
+                train_loss / (train_i * self.args.batch_size),
+                "\tAverage test loss: ",
+                test_loss / (eval_i * self.args.batch_size),
+            )
 
         print("Finish training")
 
@@ -178,15 +204,15 @@ class Trainer:
             model.eval()
             with torch.no_grad():
                 # for batch_idx, (x, _) in enumerate(test_loader):
-                #for i in tqdm.tqdm(range(int(test_X.shape[0]/self.args.batch_size))):
-                    # l1 = i*self.args.batch_size
-                    # l2 = i*self.args.batch_size + self.args.batch_size
+                # for i in tqdm.tqdm(range(int(test_X.shape[0]/self.args.batch_size))):
+                # l1 = i*self.args.batch_size
+                # l2 = i*self.args.batch_size + self.args.batch_size
 
                 X = test_X[:n_images_to_log, :, :]
                 Y = test_Y[:n_images_to_log, :, :, :]
 
-                X = torch.from_numpy(X)/255
-                Y = torch.from_numpy(Y)/255
+                X = torch.from_numpy(X) / 255
+                Y = torch.from_numpy(Y) / 255
 
                 X = X.view(n_images_to_log, self.args.x_dim)
                 Y = Y.view(n_images_to_log, self.args.x_dim, 2)
@@ -194,20 +220,24 @@ class Trainer:
                 X = X.to(DEVICE)
 
                 X_hat, _, _ = model(X)
-                    # break
+                # break
 
             # res_imgs_path = "/Users/heshe/Desktop/mlops/image-restoration/reports/figures/"
 
             # X = X.view(self.args.batch_size, self.args.x_dim)
             # Y = Y.view(self.args.batch_size, self.args.x_dim, 2)
 
-            X_origin = get_rbg_from_lab((X*255).view(n_images_to_log, 224, 224),
-                                        (Y*255).view(n_images_to_log, 224, 224, 2),
-                                        n=n_images_to_log)
+            X_origin = get_rbg_from_lab(
+                (X * 255).view(n_images_to_log, 224, 224),
+                (Y * 255).view(n_images_to_log, 224, 224, 2),
+                n=n_images_to_log,
+            )
 
-            X_hat = get_rbg_from_lab((X*255).view(n_images_to_log, 224, 224),
-                                     (X_hat*255).view(n_images_to_log, 224, 224, 2),
-                                     n=n_images_to_log)
+            X_hat = get_rbg_from_lab(
+                (X * 255).view(n_images_to_log, 224, 224),
+                (X_hat * 255).view(n_images_to_log, 224, 224, 2),
+                n=n_images_to_log,
+            )
 
             orig_images = []
             recon_images = []
@@ -226,7 +256,7 @@ class Trainer:
             wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
 
 
-def get_rbg_from_lab(gray_imgs, ab_imgs, n = 10):
+def get_rbg_from_lab(gray_imgs, ab_imgs, n=10):
     # create an empty array to store images
     imgs = np.zeros((n, 224, 224, 3))
 
