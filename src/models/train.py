@@ -6,6 +6,8 @@ A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 import argparse
 import sys
 
+#sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
+
 import cv2
 import numpy as np
 import torch
@@ -18,6 +20,7 @@ from torch.optim import Adam
 import wandb
 from src.models.model_conv32 import ConvVAE
 from src.models.model_FC import Decoder, Encoder, Net
+from src.data.make_dataset import load_data
 
 
 class Trainer:
@@ -38,7 +41,7 @@ class Trainer:
 
         parser.add_argument(
             "--dataset_path",
-            default="/Users/heshe/Desktop/mlops/cookiecutter_project/data",
+            default="C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/data",
         )
         parser.add_argument("--run_name", default="default_run")
         # import sys
@@ -72,21 +75,8 @@ class Trainer:
         DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
 
         # Get train and test
-        train_path = "/Users/heshe/Desktop/mlops/image-restoration/data/raw/"
-        ab_imgs = np.load(train_path + "/ab/ab/ab1.npy")
-        gray_imgs = np.load(train_path + "/l/gray_scale.npy")[:10000, :, :]
-
-        train_X = gray_imgs[:9000, :, :]
-        test_X = gray_imgs[9000:, :, :]
-
-        train_Y = ab_imgs[:9000, :, :, :]
-        test_Y = ab_imgs[9000:, :, :, :]
-
-        # train_X = gray_imgs[:10, :, :]
-        # test_X = gray_imgs[10:12, :, :]
-
-        # train_Y = ab_imgs[:10, :, :, :]
-        # test_Y = ab_imgs[10:12, :, :, :]
+        train_dataloader = load_data(batch_size=self.args.batch_size)
+        test_dataloader = load_data(train=False, batch_size=self.args.batch_size)
 
         # Init model
         if self.args.use_CNN:
@@ -118,27 +108,18 @@ class Trainer:
 
             # ______________TRAIN______________
             model.train()
-            # for batch_idx, (x, _) in enumerate(train_loader):
-            for train_i in tqdm.tqdm(
-                range(int(train_X.shape[0] / self.args.batch_size))
+            for train_i, (X, Y) in tqdm.tqdm(
+                enumerate(train_dataloader)
             ):
-                l1 = train_i * self.args.batch_size
-                l2 = train_i * self.args.batch_size + self.args.batch_size
-                if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
-                    train_i -= 1
-                    break
-                X = train_X[l1:l2, :, :]
-                Y = train_Y[l1:l2, :, :, :]
-
-                X = torch.from_numpy(X) / 255
-                Y = torch.from_numpy(Y) / 255
+                if train_i == 0:
+                    X_test = X
+                    Y_test = Y
 
                 Y = Y.permute(0, 3, 1, 2)
                 X = resize(X, (img_size, img_size))
                 Y = resize(Y, (img_size, img_size))
 
                 if self.args.use_CNN:
-
                     X = X[:, None, :, :]
                 else:
                     X = X.view(self.args.batch_size, img_size * img_size)
@@ -161,19 +142,9 @@ class Trainer:
             # ______________VAL______________
             with torch.no_grad():
                 model.eval()
-                for eval_i in tqdm.tqdm(
-                    range(int(test_X.shape[0] / self.args.batch_size))
+                for eval_i, (X, Y) in tqdm.tqdm(
+                    enumerate(test_dataloader)
                 ):
-                    l1 = eval_i * self.args.batch_size
-                    l2 = eval_i * self.args.batch_size + self.args.batch_size
-                    if l2 > train_X.shape[0] or l1 > train_X.shape[0]:
-                        eval_i -= 1
-                        break
-                    X = test_X[l1:l2, :, :]
-                    Y = test_Y[l1:l2, :, :, :]
-
-                    X = torch.from_numpy(X) / 255
-                    Y = torch.from_numpy(Y) / 255
 
                     Y = Y.permute(0, 3, 1, 2)
                     X = resize(X, (img_size, img_size))
@@ -230,12 +201,9 @@ class Trainer:
 
             model.eval()
             with torch.no_grad():
-
-                X = train_X[:n_images_to_log, :, :]
-                Y = train_Y[:n_images_to_log, :, :, :]
-
-                X = torch.from_numpy(X) / 255
-                Y = torch.from_numpy(Y) / 255
+                
+                X = X_test[:n_images_to_log, :, :]
+                Y = Y_test[:n_images_to_log, :, :, :]
 
                 Y = Y.permute(0, 3, 1, 2)
                 X = resize(X, (img_size, img_size))
