@@ -357,3 +357,4 @@ data/*
 .DS_Store
 *wandb
 *.pth
+*.ipynb_checkpoints*

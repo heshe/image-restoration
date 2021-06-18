@@ -5,7 +5,6 @@ import dotenv
 import joblib
 import numpy as np
 import torch
-from azureml.core.model import Model
 
 
 # Called when the service is loaded

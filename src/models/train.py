@@ -62,6 +62,62 @@ class Trainer:
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
         return reproduction_loss, 0.01 * KLD
 
+    def log_images_to_wandb(self, train_X, train_Y, model, img_size):
+        # Generate reconstructions
+        if self.args.use_wandb:
+
+            n_images_to_log = 10  # Right now: cannot be more than #test_imgs = 1000
+
+            model.eval()
+            with torch.no_grad():
+
+                X = train_X[:n_images_to_log, :, :]
+                Y = train_Y[:n_images_to_log, :, :, :]
+
+                X = torch.from_numpy(X) / 255
+                Y = torch.from_numpy(Y) / 255
+
+                Y = Y.permute(0, 3, 1, 2)
+                X = resize(X, (img_size, img_size))
+                Y = resize(Y, (img_size, img_size))
+
+                if self.args.use_CNN:
+                    X = X[:, None, :, :]
+
+                else:
+                    X = X.view(n_images_to_log, self.args.fc_flattened_dim)
+                    Y = Y.view(n_images_to_log, self.args.fc_flattened_dim, 2)
+
+                X = X.to(self.DEVICE)
+
+                X_hat, _, _ = model(X)
+
+            X_origin = get_rbg_from_lab(
+                (X * 255).squeeze(),
+                (Y * 255).permute(0, 2, 3, 1),
+                img_size=img_size,
+                n=n_images_to_log,
+            )
+
+            X_hat = get_rbg_from_lab(
+                (X * 255).squeeze(),
+                (X_hat * 255).permute(0, 2, 3, 1),
+                img_size=img_size,
+                n=n_images_to_log,
+            )
+
+            orig_images = []
+            recon_images = []
+            for i in range(n_images_to_log):
+                im_o = Image.fromarray(X_origin[i])
+                orig_images.append(im_o)
+                im_r = Image.fromarray(X_hat[i])
+                recon_images.append(im_r)
+
+            wandb.log({"Originals": [wandb.Image(i) for i in orig_images]})
+
+            wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
+
     def train(self):
         img_size = (
             self.args.conv_img_dim
@@ -72,7 +128,7 @@ class Trainer:
             wandb.init(config=self.args)
 
         # Training device
-        DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
+        self.DEVICE = torch.device("cuda" if self.args.use_cuda else "cpu")
 
         # Get train and test
         train_dataloader = load_data(batch_size=self.args.batch_size)
@@ -92,7 +148,7 @@ class Trainer:
                 fc_hidden_dim=self.args.fc_hidden_dim,
                 output_dim=self.args.fc_flattened_dim,
             )
-            model = Net(Encoder=encoder, Decoder=decoder).to(DEVICE)
+            model = Net(Encoder=encoder, Decoder=decoder).to(self.DEVICE)
 
         if self.args.use_wandb:
             wandb.watch(model, log_freq=100)
@@ -125,8 +181,8 @@ class Trainer:
                     X = X.view(self.args.batch_size, img_size * img_size)
                     Y = Y.view(self.args.batch_size, img_size * img_size, 2)
 
-                X = X.to(DEVICE)
-                Y = Y.to(DEVICE)
+                X = X.to(self.DEVICE)
+                Y = Y.to(self.DEVICE)
 
                 optimizer.zero_grad()
 
@@ -156,7 +212,7 @@ class Trainer:
                         X = X.view(self.args.batch_size, self.args.fc_flattened_dim)
                         Y = Y.view(self.args.batch_size, self.args.fc_flattened_dim, 2)
 
-                    X = X.to(DEVICE)
+                    X = X.to(self.DEVICE)
 
                     X_hat, mean, log_var = model(X)
                     rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
@@ -194,59 +250,7 @@ class Trainer:
 
         print("Finish training")
 
-        # Generate reconstructions
-        if self.args.use_wandb:
-
-            n_images_to_log = 10  # Right now: cannot be more than #test_imgs = 1000
-
-            model.eval()
-            with torch.no_grad():
-                
-                X = X_test[:n_images_to_log, :, :]
-                Y = Y_test[:n_images_to_log, :, :, :]
-
-                Y = Y.permute(0, 3, 1, 2)
-                X = resize(X, (img_size, img_size))
-                Y = resize(Y, (img_size, img_size))
-
-                if self.args.use_CNN:
-                    X = X[:, None, :, :]
-
-                else:
-                    X = X.view(n_images_to_log, self.args.fc_flattened_dim)
-                    Y = Y.view(n_images_to_log, self.args.fc_flattened_dim, 2)
-
-                X = X.to(DEVICE)
-
-                X_hat, _, _ = model(X)
-
-            X_origin = get_rbg_from_lab(
-                (X * 255).squeeze(),
-                (Y * 255).permute(0, 2, 3, 1),
-                img_size=img_size,
-                n=n_images_to_log,
-            )
-
-            X_hat = get_rbg_from_lab(
-                (X * 255).squeeze(),
-                (X_hat * 255).permute(0, 2, 3, 1),
-                img_size=img_size,
-                n=n_images_to_log,
-            )
-
-            orig_images = []
-            recon_images = []
-            print(X_origin.shape)
-            for i in range(n_images_to_log):
-                im_o = Image.fromarray(X_origin[i])
-                orig_images.append(im_o)
-                im_r = Image.fromarray(X_hat[i])
-                recon_images.append(im_r)
-
-            print(len(orig_images))
-            wandb.log({"Originals": [wandb.Image(i) for i in orig_images]})
-
-            wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
+        self.log_images_to_wandb(X_test, Y_test, model, img_size)
 
 
 def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
