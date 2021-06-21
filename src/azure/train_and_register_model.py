@@ -5,8 +5,7 @@ from pathlib import Path
 
 import azureml.core
 from azureml.core import Environment, Experiment, ScriptRunConfig, Workspace
-from azureml.core.conda_dependencies import CondaDependencies
-from azureml.widgets import RunDetails
+
 
 # Add parser
 parser = argparse.ArgumentParser(description="Deployment arguments")

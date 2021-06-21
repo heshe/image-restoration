@@ -3,33 +3,25 @@ Adapted from
 https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_AutoEncoder.ipynb
 A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
-import argparse
-import sys
-
-# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
+import logging
 
 import cv2
+import os
+import hydra
 import numpy as np
 import torch
 import torch.nn as nn
 import tqdm
-import numpy as np
 from kornia.geometry.transform import resize
+from omegaconf import OmegaConf
 from PIL import Image
 from torch.optim import Adam
 
 import wandb
 from src.models.model_conv32 import ConvVAE
 from src.models.model_FC import Decoder, Encoder, Net
-from src.azure.make_dataset_azure import load_data
-
+# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 # from azureml.core import Run
-
-import hydra
-from omegaconf import OmegaConf
-
-import logging
-
 log = logging.getLogger(__name__)
 
 

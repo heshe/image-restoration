@@ -1,16 +1,10 @@
 import numpy as np
 import torch
-import sys
-
+from torch.utils.data import DataLoader, Dataset
 # sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
-
-from numpy.lib.twodim_base import _trilu_indices_form_dispatcher
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-
-
 # Define path to data
 path = "C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/data/"
+
 
 # Store raw data in "data/raw" and processeed in "data/processed"
 def load_dataset():
