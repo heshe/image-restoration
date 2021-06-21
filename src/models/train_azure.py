@@ -197,12 +197,12 @@ class Trainer:
                 model_name=self.args.model_name,
                 tags={"Training context": "Inline Training"},
                 properties={
-                    'LR': run.get_metrics()['LR'],
-                    'Epochs': run.get_metrics()['Epochs'],
-                    'Latent dim': run.get_metrics()['Latent dim'],
-                    'Hidden dim': run.get_metrics()['Hidden dim'],
-                    'Overall loss': run.get_metrics()['Overall loss'],
-                 }
+                    "LR": run.get_metrics()["LR"],
+                    "Epochs": run.get_metrics()["Epochs"],
+                    "Latent dim": run.get_metrics()["Latent dim"],
+                    "Hidden dim": run.get_metrics()["Hidden dim"],
+                    "Overall loss": run.get_metrics()["Overall loss"],
+                },
             )
         else:
             run.complete()

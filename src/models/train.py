@@ -6,7 +6,7 @@ A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 import argparse
 import sys
 
-#sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
+# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 
 import cv2
 import numpy as np
@@ -164,9 +164,7 @@ class Trainer:
 
             # ______________TRAIN______________
             model.train()
-            for train_i, (X, Y) in tqdm.tqdm(
-                enumerate(train_dataloader)
-            ):
+            for train_i, (X, Y) in tqdm.tqdm(enumerate(train_dataloader)):
                 if train_i == 0:
                     X_test = X
                     Y_test = Y
@@ -198,9 +196,7 @@ class Trainer:
             # ______________VAL______________
             with torch.no_grad():
                 model.eval()
-                for eval_i, (X, Y) in tqdm.tqdm(
-                    enumerate(test_dataloader)
-                ):
+                for eval_i, (X, Y) in tqdm.tqdm(enumerate(test_dataloader)):
 
                     Y = Y.permute(0, 3, 1, 2)
                     X = resize(X, (img_size, img_size))
