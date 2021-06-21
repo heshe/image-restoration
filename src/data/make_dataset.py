@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import sys
 
-#sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
+# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 
 from numpy.lib.twodim_base import _trilu_indices_form_dispatcher
 from torch.utils.data import Dataset
@@ -22,19 +22,19 @@ def load_dataset():
 
     ab12 = np.append(ab1, ab2, axis=0)
     ab = np.append(ab12, ab3, axis=0)
-    
+
     ab_tensor = torch.from_numpy(ab)
     gray_tensor = torch.from_numpy(gray_imgs)
 
     print("Storing raw data... \n")
     torch.save(ab_tensor, "data/raw/ab.pt")
     torch.save(gray_tensor, "data/raw/gray.pt")
-    
-    #____________ Process ___________
-    ab_processed = ab_tensor/255
-    gray_processed = gray_tensor/255
 
-    cut_amount = int(ab_processed.size()[0]*(0.9))
+    # ____________ Process ___________
+    ab_processed = ab_tensor / 255
+    gray_processed = gray_tensor / 255
+
+    cut_amount = int(ab_processed.size()[0] * (0.9))
 
     train_X = gray_processed[:cut_amount, :, :]
     test_X = gray_processed[cut_amount:, :, :]
@@ -68,12 +68,11 @@ class mlopsDataset(Dataset):
         y = self.ab[idx]
         return X, y
 
+
 def load_data(train=True, batch_size=64, shuffle=True):
-    data = mlopsDataset(train)     
+    data = mlopsDataset(train)
     return DataLoader(data, batch_size, shuffle)
 
 
 if __name__ == "__main__":
     load_dataset()
-
-        
