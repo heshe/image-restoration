@@ -127,10 +127,9 @@ class Trainer:
             from src.azure.make_dataset_azure import load_data
 
             run = Run.get_context()  # Setup run instance for cloud
-            datapath = run.input_datasets["image_resto"]
-            run.log("datapath", datapath)
-            run.log("args", self.args)
-
+            datapath = run.input_datasets["image_resto"run.log(datapath)
+	    print(datapath)
+    	    exit()
             train_dataloader = load_data(
                 train=True,
                 path=datapath,
@@ -171,8 +170,6 @@ class Trainer:
                 output_dim=self.args.fc_flattened_dim,
             )
             model = Net(Encoder=encoder, Decoder=decoder).to(self.DEVICE)
-
-        model =  model.to(self.DEVICE)
 
         if self.args.use_wandb:
             wandb.watch(model, log_freq=100)

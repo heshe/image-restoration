@@ -7,7 +7,7 @@ fc_hidden_dim: 400
 conv_img_dim: 33
 use_wandb: False
 plot_results: False
-use_cuda: False
+use_cuda: True
 use_CNN: True
 azure: True
 model_name: image-resto

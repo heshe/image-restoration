@@ -1,4 +1,4 @@
-# local package
+X# local package
 -e git+https://github.com/heshe/image-restoration@master#egg=src
 
 # external requirements
@@ -22,10 +22,8 @@ torch
 torchvision
 opencv-python
 joblib
-hydra-core>=1.1
+hydra
 tqdm
-kornia
-omegaconf
 
 # Azure
 azureml-sdk
