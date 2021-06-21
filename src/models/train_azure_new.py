@@ -38,7 +38,6 @@ class Trainer:
         config = hydra.compose(config_name="config.yaml")
         log.info(f"configuration: \n {OmegaConf.to_yaml(config)}")
         self.args = config.experiment
-        log.info(self.args)
 
     def loss_function(self, x, x_hat, mean, log_var):
         reproduction_loss = nn.functional.binary_cross_entropy(
