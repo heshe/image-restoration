@@ -18,6 +18,7 @@ from PIL import Image
 from torch.optim import Adam
 
 from src.models.model_FC import Decoder, Encoder, Net
+from src.azure.make_dataset_azure import load_data
 
 
 class Trainer:

@@ -1,0 +1,17 @@
+lr: 0.001
+n_epochs: 5
+batch_size: 16
+fc_flattened_dim: 50176
+fc_latent_dim: 20
+fc_hidden_dim: 400
+conv_img_dim: 33
+use_wandb: True
+plot_results: True
+use_cuda: False
+use_CNN: True
+azure: True
+model_name: image-resto
+optuna: False
+small_dataset: False
+run_name: default_run
+save_model: True
