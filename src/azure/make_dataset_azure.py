@@ -1,15 +1,10 @@
 import numpy as np
 import torch
-import sys
-
+from torch.utils.data import DataLoader, Dataset
+# from numpy.lib.twodim_base import _trilu_indices_form_dispatcher
 # sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 
-from numpy.lib.twodim_base import _trilu_indices_form_dispatcher
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
 
-
-# Store raw data in "data/raw" and processeed in "data/processed"
 def load_dataset(path=None, train=True, small_dataset=False):
     print("Loading data... \n")
     gray_imgs = np.load(path + "/gray_scale.npy")

@@ -6,8 +6,6 @@ A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 import argparse
 import sys
 
-# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
-
 import cv2
 import numpy as np
 import torch
@@ -18,9 +16,9 @@ from PIL import Image
 from torch.optim import Adam
 
 import wandb
+from src.data.make_dataset import load_data
 from src.models.model_conv32 import ConvVAE
 from src.models.model_FC import Decoder, Encoder, Net
-from src.data.make_dataset import load_data
 
 
 class Trainer:

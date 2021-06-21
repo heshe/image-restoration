@@ -4,11 +4,11 @@ https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_
 A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
 import argparse
+import os
 import sys
 from pathlib import Path
 
 import cv2
-import os
 import joblib
 import numpy as np
 import torch
@@ -18,7 +18,6 @@ from PIL import Image
 from torch.optim import Adam
 
 from src.models.model_FC import Decoder, Encoder, Net
-from src.azure.make_dataset_azure import load_data
 
 
 class Trainer:
