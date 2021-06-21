@@ -12,6 +12,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import tqdm
+import joblib
 from kornia.geometry.transform import resize
 from omegaconf import OmegaConf
 from PIL import Image
@@ -164,7 +165,7 @@ class Trainer:
             )
             model = Net(Encoder=encoder, Decoder=decoder).to(self.DEVICE)
 
-        model =  model.to(self.DEVICE)
+        model = model.to(self.DEVICE)
 
         if self.args.use_wandb:
             wandb.watch(model, log_freq=100)
@@ -225,6 +226,7 @@ class Trainer:
                         Y = Y.view(self.args.batch_size, self.args.fc_flattened_dim, 2)
 
                     X = X.to(self.DEVICE)
+                    Y = Y.to(self.DEVICE)
 
                     X_hat, mean, log_var = model(X)
                     rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
