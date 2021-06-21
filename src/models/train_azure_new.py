@@ -18,6 +18,7 @@ from omegaconf import OmegaConf
 from PIL import Image
 from torch.optim import Adam
 from azureml.core import Run
+from pathlib import Path
 
 import wandb
 from src.models.model_conv32 import ConvVAE
@@ -32,6 +33,9 @@ class Trainer:
         config = hydra.compose(config_name="config.yaml")
         log.info(f"configuration: \n {OmegaConf.to_yaml(config)}")
         self.args = config.experiment
+
+        # Set root path
+        self.ROOT = str(Path(__file__).parent.parent.parent)
 
     def loss_function(self, x, x_hat, mean, log_var):
         reproduction_loss = nn.functional.binary_cross_entropy(
@@ -247,7 +251,7 @@ class Trainer:
                     }
                 )
 
-            if self.azure:
+            if self.args.azure:
                 run.log(
                     "train_loss",
                     np.float(train_loss / (train_i * self.args.batch_size)),
@@ -307,13 +311,13 @@ class Trainer:
                 model_path=os.path.join(self.ROOT, "models", model_file),
                 model_name=self.args.model_name,
                 tags={"Training context": "Inline Training"},
-                properties={
-                    "LR": run.get_metrics()["LR"],
-                    "Epochs": run.get_metrics()["Epochs"],
-                    "Latent dim": run.get_metrics()["Latent dim"],
-                    "Hidden dim": run.get_metrics()["Hidden dim"],
-                    "Overall loss": run.get_metrics()["Overall loss"],
-                },
+                #properties={
+                #    "LR": run.get_metrics()["LR"],
+                #    "Epochs": run.get_metrics()["Epochs"],
+                #    "Latent dim": run.get_metrics()["Latent dim"],
+                #    "Hidden dim": run.get_metrics()["Hidden dim"],
+                #    "Overall loss": run.get_metrics()["Overall loss"],
+                #},
             )
         else:
             run.complete()

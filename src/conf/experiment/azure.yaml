@@ -10,7 +10,7 @@ plot_results: False
 use_cuda: True
 use_CNN: True
 azure: True
-model_name: image-resto
+model_name: image_resto
 optuna: False
 small_dataset: True
 run_name: default_run
