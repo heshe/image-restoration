@@ -128,7 +128,9 @@ class Trainer:
             wandb.init(config=self.args)
 
         # Training device
-        self.DEVICE = torch.device("cuda" if self.args.use_cuda and torch.cuda.is_available() else "cpu")
+        self.DEVICE = torch.device(
+            "cuda" if self.args.use_cuda and torch.cuda.is_available() else "cpu"
+        )
 
         # Get train and test
         train_dataloader = load_data(batch_size=self.args.batch_size)
