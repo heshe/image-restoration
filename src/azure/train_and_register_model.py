@@ -44,21 +44,7 @@ print("Ready to use Azure ML {} to work with {}".format(azureml.core.VERSION, ws
 ROOT = str(Path(__file__).parent.parent.parent)
 
 # Create a Python environment for the experiment
-project_env = Environment("image-restoration")
-
-# Ensure the required packages are installed (we need pip, scikit-learn and Azure ML defaults)
-packages = CondaDependencies.create(
-    conda_packages=["pip"],
-    pip_packages=["azureml-defaults"],
-)
-
-# Add pip packages from requirements.txt
-with open(os.path.join(ROOT, "requirements.txt"), "r") as f:
-    for line in f:
-        if line[0].isalpha():
-            packages.add_pip_package(line.strip())
-
-project_env.python.conda_dependencies = packages
+project_env = Environment.from_pip_requirements('project_env', os.path.join(ROOT, 'requirements.txt'))
 
 # Get the training dataset
 image_data = ws.datasets.get(args.data_name)
@@ -66,40 +52,8 @@ image_data = ws.datasets.get(args.data_name)
 # Create a script config
 script_config = ScriptRunConfig(
     source_directory=ROOT,
-<<<<<<< HEAD
     script=os.path.join(ROOT, "src", "models", "train_azure_new.py"),
     arguments=["--input-data", image_data.as_named_input("image_resto").as_mount()],
-=======
-    script=os.path.join(ROOT, "src", "models", "train_azure.py"),
-    arguments=[
-        "--lr",
-        args.lr,
-        "--n_epochs",
-        args.n_epochs,
-        "--batch_size",
-        args.batch_size,
-        # "--x_dim",
-        # args.x_dim,
-        # "--latent_dim",
-        # args.latent_dim,
-        # "--hidden_dim",
-        # args.hidden_dim,
-        # "--use_wandb",
-        # args.use_wandb,
-        # "--plot_results",
-        # False,
-        # "--use_cuda",
-        # args.use_cuda,
-        # "--make_reconstructions",
-        # args.make_reconstructions,
-        # "--save_model",
-        # args.save_model,
-        # "--model_name",
-        # args.model_name,
-        "--input-data",
-        image_data.as_named_input("image_resto").as_mount(),
-    ],
->>>>>>> 5de136a9831ee48cee2c9bf2ea2d955094d358b4
     environment=project_env,
 )  # Use the environment created previously
 
