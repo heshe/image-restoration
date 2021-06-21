@@ -358,4 +358,4 @@ data/*
 *wandb
 *.pth
 *.ipynb_checkpoints*
-*settings.json*
+*.vscode*
