@@ -23,6 +23,7 @@ torchvision
 opencv-python
 joblib
 hydra
+tqdm
 
 # Azure
 azureml-sdk
