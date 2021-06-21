@@ -6,7 +6,7 @@ A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 import argparse
 import sys
 
-#sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
+# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 
 import cv2
 import numpy as np
@@ -23,12 +23,13 @@ from src.models.model_conv32 import ConvVAE
 from src.models.model_FC import Decoder, Encoder, Net
 from src.azure.make_dataset_azure import load_data
 
-#from azureml.core import Run
+# from azureml.core import Run
 
 import hydra
 from omegaconf import OmegaConf
 
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -117,26 +118,29 @@ class Trainer:
             wandb.init(config=self.args)
 
         # Training device
-        self.DEVICE = torch.device("cuda" if self.args.use_cuda and torch.cuda.is_available() else "cpu")
+        self.DEVICE = torch.device(
+            "cuda" if self.args.use_cuda and torch.cuda.is_available() else "cpu"
+        )
 
         # Get train and test
         if self.args.azure:
             from src.azure.make_dataset_azure import load_data
-            run = Run.get_context() # Setup run instance for cloud
+
+            run = Run.get_context()  # Setup run instance for cloud
             datapath = path = run.input_datasets["image_resto"]
             train_dataloader = load_data(
                 train=True,
                 path=datapath,
-                small_data=self.args.small_dataset
+                small_data=self.args.small_dataset,
                 batch_size=self.args.batch_size,
             )
             test_dataloader = load_data(
                 train=False,
                 path=datapath,
-                small_data=self.args.small_dataset
+                small_data=self.args.small_dataset,
                 batch_size=self.args.batch_size,
             )
-        
+
         else:
             from src.data.make_dataset import load_data
 
@@ -179,9 +183,7 @@ class Trainer:
 
             # ______________TRAIN______________
             model.train()
-            for train_i, (X, Y) in tqdm.tqdm(
-                enumerate(train_dataloader)
-            ):
+            for train_i, (X, Y) in tqdm.tqdm(enumerate(train_dataloader)):
                 if train_i == 0:
                     X_test = X
                     Y_test = Y
@@ -213,9 +215,7 @@ class Trainer:
             # ______________VAL______________
             with torch.no_grad():
                 model.eval()
-                for eval_i, (X, Y) in tqdm.tqdm(
-                    enumerate(test_dataloader)
-                ):
+                for eval_i, (X, Y) in tqdm.tqdm(enumerate(test_dataloader)):
 
                     Y = Y.permute(0, 3, 1, 2)
                     X = resize(X, (img_size, img_size))
@@ -247,12 +247,21 @@ class Trainer:
                         "train_kld": train_kld / (train_i * self.args.batch_size),
                     }
                 )
-            
+
             if self.azure:
-                run.log("train_loss", np.float(train_loss / (train_i * self.args.batch_size))),
-                run.log("test_loss", np.float(test_loss / (eval_i * self.args.batch_size))),
-                run.log("train_rec", np.float(train_rec / (train_i * self.args.batch_size))),
-                run.log("train_kld", np.float(train_kld / (train_i * self.args.batch_size)))
+                run.log(
+                    "train_loss",
+                    np.float(train_loss / (train_i * self.args.batch_size)),
+                ),
+                run.log(
+                    "test_loss", np.float(test_loss / (eval_i * self.args.batch_size))
+                ),
+                run.log(
+                    "train_rec", np.float(train_rec / (train_i * self.args.batch_size))
+                ),
+                run.log(
+                    "train_kld", np.float(train_kld / (train_i * self.args.batch_size))
+                )
 
             # Save current model
             if epoch % 5 == 0 and self.args.save_model and not self.args.azure:
@@ -264,7 +273,7 @@ class Trainer:
                     "%s %s %s",
                     f"\tEpoch {epoch + 1}",
                     f"\tAverage train Loss: {train_loss / (train_i * self.args.batch_size)}"
-                    f"\tAverage test loss: {test_loss / (eval_i * self.args.batch_size)}"
+                    f"\tAverage test loss: {test_loss / (eval_i * self.args.batch_size)}",
                 )
             else:
                 print(
@@ -276,7 +285,6 @@ class Trainer:
                     "\tAverage test loss: ",
                     test_loss / (eval_i * self.args.batch_size),
                 )
-            
 
         print("Finish training")
 
@@ -286,13 +294,13 @@ class Trainer:
         # Save and register model in Azure
         if self.args.azure:
             if self.args.save_model:
-            # Save the trained model
-            model_file = self.args.model_name + ".pkl"
-            joblib.dump(value=model, filename=model_file)
-            run.upload_file(
-                name=os.path.join(self.ROOT, "models", model_file),
-                path_or_stream="./" + model_file,
-            )
+                # Save the trained model
+                model_file = self.args.model_name + ".pkl"
+                joblib.dump(value=model, filename=model_file)
+                run.upload_file(
+                    name=os.path.join(self.ROOT, "models", model_file),
+                    path_or_stream="./" + model_file,
+                )
 
             run.complete()
             # Register the model
@@ -301,16 +309,15 @@ class Trainer:
                 model_name=self.args.model_name,
                 tags={"Training context": "Inline Training"},
                 properties={
-                    'LR': run.get_metrics()['LR'],
-                    'Epochs': run.get_metrics()['Epochs'],
-                    'Latent dim': run.get_metrics()['Latent dim'],
-                    'Hidden dim': run.get_metrics()['Hidden dim'],
-                    'Overall loss': run.get_metrics()['Overall loss'],
-                 }
+                    "LR": run.get_metrics()["LR"],
+                    "Epochs": run.get_metrics()["Epochs"],
+                    "Latent dim": run.get_metrics()["Latent dim"],
+                    "Hidden dim": run.get_metrics()["Hidden dim"],
+                    "Overall loss": run.get_metrics()["Overall loss"],
+                },
             )
-            else:
-                run.complete()
-
+        else:
+            run.complete()
 
 
 def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):

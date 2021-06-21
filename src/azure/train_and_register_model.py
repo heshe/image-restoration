@@ -44,7 +44,9 @@ print("Ready to use Azure ML {} to work with {}".format(azureml.core.VERSION, ws
 ROOT = str(Path(__file__).parent.parent.parent)
 
 # Create a Python environment for the experiment
-project_env = Environment.from_pip_requirements('project_env', os.path.join(ROOT, 'requirements.txt'))
+project_env = Environment.from_pip_requirements(
+    "project_env", os.path.join(ROOT, "requirements.txt")
+)
 
 # Get the training dataset
 image_data = ws.datasets.get(args.data_name)
