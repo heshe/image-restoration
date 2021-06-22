@@ -21,6 +21,7 @@ def load_dataset(path="", train=True, small_dataset=False):
     ROOT = str(Path(__file__).parent.parent.parent)
     dataset.download(target_path= ROOT + '/data/raw', overwrite=False)
     print("DOWNLOADED")
+    print(dataset)
     path = ROOT + '/data/raw'
     gray_imgs = np.load(path + "/gray_scale.npy")
     gray_tensor = torch.from_numpy(gray_imgs)
