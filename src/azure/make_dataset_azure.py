@@ -20,7 +20,7 @@ def load_dataset(path="", train=True, small_dataset=False):
 
     ROOT = str(Path(__file__).parent.parent.parent)
     dataset.download(target_path= ROOT + '/data/raw', overwrite=False)
-
+    print("DOWNLOADED")
     path = ROOT + '/data/raw'
     gray_imgs = np.load(path + "/gray_scale.npy")
     gray_tensor = torch.from_numpy(gray_imgs)
@@ -54,7 +54,7 @@ def load_dataset(path="", train=True, small_dataset=False):
 
 
 class mlopsDataset(Dataset):
-    def __init__(self, train, path, small_dataset):
+    def __init__(self, train=True, path="", small_dataset=False):
         self.gray, self.ab = load_dataset(
             path=path, train=train, small_dataset=small_dataset
         )
