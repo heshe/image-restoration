@@ -52,15 +52,15 @@ def load_dataset():
 
 
 class mlopsDataset(Dataset):
-    def __init__(self, train):
+    def __init__(self, train, path):
         if train:
             print("Loading train data...")
-            self.gray = torch.load("data/processed/train_X.pt")
-            self.ab = torch.load("data/processed/train_Y.pt")
+            self.gray = torch.load(path + "/data/processed/train_X.pt")
+            self.ab = torch.load(path + "/data/processed/train_Y.pt")
         else:
             print("Loading test data...")
-            self.gray = torch.load("data/processed/test_X.pt")
-            self.ab = torch.load("data/processed/test_Y.pt")
+            self.gray = torch.load(path + "/data/processed/test_X.pt")
+            self.ab = torch.load(path + "/data/processed/test_Y.pt")
 
     def __len__(self):
         return self.gray.size()[0]
@@ -71,8 +71,8 @@ class mlopsDataset(Dataset):
         return X, y
 
 
-def load_data(train=True, batch_size=64, shuffle=True):
-    data = mlopsDataset(train)
+def load_data(train=True, batch_size=64, shuffle=True, path = ""):
+    data = mlopsDataset(train, path)
     return DataLoader(data, batch_size, shuffle)
 
 
