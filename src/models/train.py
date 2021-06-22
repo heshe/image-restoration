@@ -132,19 +132,19 @@ class Trainer:
 
             run = Run.get_context()  # Setup run instance for cloud
             
-            #datapath = run.input_datasets["image_resto"]
-            #run.log("datapath", datapath)
-            #run.log("args", self.args)
+            datapath = run.input_datasets["image_resto"]
+            run.log("datapath", datapath)
+            run.log("args", self.args)
 
             train_dataloader = load_data(
                 train=True,
-                path="",
+                path=datapath,
                 small_dataset=self.args.small_dataset,
                 batch_size=self.args.batch_size,
             )
             test_dataloader = load_data(
                 train=False,
-                path="",
+                path=datapath,
                 small_dataset=self.args.small_dataset,
                 batch_size=self.args.batch_size,
             )
