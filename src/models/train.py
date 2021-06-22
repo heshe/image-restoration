@@ -138,13 +138,13 @@ class Trainer:
 
             train_dataloader = load_data(
                 train=True,
-                #path=datapath,
+                path="",
                 small_dataset=self.args.small_dataset,
                 batch_size=self.args.batch_size,
             )
             test_dataloader = load_data(
                 train=False,
-                #path=datapath,
+                path="",
                 small_dataset=self.args.small_dataset,
                 batch_size=self.args.batch_size,
             )
