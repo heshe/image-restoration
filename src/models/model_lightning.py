@@ -17,7 +17,7 @@ class ValidationCallback(Callback):
                 raise optuna.TrialPruned()
 
 class ConvVAE(pl.LightningModule):
-    def __init__(self, lr=0.001, img_size=33, latent_dim=256, dropout=0.5, trial=None):
+    def __init__(self, lr=0.001, img_size=33, latent_dim=256, dropout_rate=0.5, trial=None):
         super(ConvVAE, self).__init__()
 
         kernel_size = 3  # (4, 4) kernel
@@ -26,7 +26,7 @@ class ConvVAE(pl.LightningModule):
         self.latent_dim = latent_dim  # latent dimension for sampling
         self.lr = lr
         self.img_size = img_size
-        self.droput = dropout
+        self.dropout_rate = dropout_rate
         self.trial = trial
 
         # ____________________ENCODER____________________
@@ -118,11 +118,11 @@ class ConvVAE(pl.LightningModule):
         return sample
 
     def forward(self, x):
-        dropout = self.dropout
+        dropout_rate = self.dropout_rate
         # ____________________ENCODING____________________
-        x = self.bn1(F.dropout(F.relu(self.enc1(x)), dropout))
-        x = self.bn2(F.dropout(F.relu(self.enc2(x)), dropout))
-        x = self.bn3(F.dropout(F.relu(self.enc3(x)), dropout))
+        x = self.bn1(F.dropout(F.relu(self.enc1(x)), dropout_rate))
+        x = self.bn2(F.dropout(F.relu(self.enc2(x)), dropout_rate))
+        x = self.bn3(F.dropout(F.relu(self.enc3(x)), dropout_rate))
         batch, _, _, _ = x.shape
         x = F.adaptive_avg_pool2d(x, 1).reshape(batch, -1)
         hidden = self.fc1(x)
