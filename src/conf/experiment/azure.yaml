@@ -15,4 +15,4 @@ n_trials: 10
 small_dataset: True
 run_name: default_run
 save_model: False
-input-data: None
+input_data: None
