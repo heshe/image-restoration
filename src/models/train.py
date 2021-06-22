@@ -18,6 +18,7 @@ from omegaconf import OmegaConf, DictConfig
 from PIL import Image
 from torch.optim import Adam
 from pathlib import Path
+import argparse
 
 import wandb
 import pytorch_lightning as pl
@@ -30,11 +31,10 @@ log = logging.getLogger(__name__)
 
 
 class Trainer:
-
     def __init__(self, args):
-        #hydra.initialize(config_path="../conf")
-        #config = hydra.compose(config_name="config.yaml")
-        #log.info(f"configuration: \n {OmegaConf.to_yaml(config)}")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--input_data", default="", type=str)
+        self.cloudargs = parser.parse_args()
         self.args = args.experiment
 
         # Set root path
