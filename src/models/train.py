@@ -20,8 +20,9 @@ from torch.optim import Adam
 from pathlib import Path
 
 import wandb
-#from src.models.model_conv32 import ConvVAE
-from src.models.model_lightning import ConvVAE
+import pytorch_lightning as pl
+import optuna
+from src.models.model_lightning import ConvVAE, ValidationCallback
 from src.models.model_FC import Decoder, Encoder, Net
 
 log = logging.getLogger(__name__)
@@ -104,9 +105,12 @@ class Trainer:
 
             wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
 
-    def train(self):
-        import os
-        print(os.getcwd())
+    def train(self, trial=None):
+        
+        if self.args.optuna and trial:
+            self.args.lr = trial.suggest_loguniform('lr', 1e-5, 1e-2)
+            self.args.latent_dim = trial.suggest_int("latent_dim", 32, 512)
+            self.args.dropout = trial.suggest_uniform("dropout", 0.0, 1)
 
         img_size = (
             self.args.conv_img_dim
@@ -156,177 +160,69 @@ class Trainer:
             test_dataloader = load_data(
                 train=False,
                 batch_size=self.args.batch_size,
-                path = self.ROOT
+                path = self.ROOT,
+                shuffle=False,
             )
 
         # Init model
-        if self.args.use_CNN:
-            model = ConvVAE()
+        model = ConvVAE(
+            lr=self.args.lr,
+            latent_dim=self.args.latent_dim,
+            img_size=self.args.conv_img_dim,
+            trial=trial
+        )
+
+        if self.args.azure:
+            trainer = pl.Trainer(
+                limit_train_batches=0.1, 
+                max_epochs=self.args.n_epochs,
+                precision=16,
+                gpus=None,
+                callbacks=[ValidationCallback()]
+            )
         else:
-            encoder = Encoder(
-                input_dim=self.args.fc_flattened_dim,
-                fc_hidden_dim=self.args.fc_hidden_dim,
-                fc_latent_dim=self.args.fc_latent_dim,
+            trainer = pl.Trainer(
+                limit_train_batches=0.1, 
+                max_epochs=self.args.n_epochs,
+                callbacks=[ValidationCallback()]
             )
-            decoder = Decoder(
-                fc_latent_dim=self.args.fc_latent_dim,
-                fc_hidden_dim=self.args.fc_hidden_dim,
-                output_dim=self.args.fc_flattened_dim,
-            )
-            model = Net(Encoder=encoder, Decoder=decoder).to(self.DEVICE)
 
-        model = model.to(self.DEVICE)
 
-        if self.args.use_wandb:
-            wandb.watch(model, log_freq=100)
-
-        optimizer = Adam(model.parameters(), lr=self.args.lr)
+        #if self.args.use_wandb:
+        #    wandb.watch(model, log_freq=100)
 
         print("Start training VAE...")
-        for epoch in range(self.args.n_epochs):
-            train_loss = 0
-            test_loss = 0
-            train_rec = 0
-            train_kld = 0
-
-            # ______________TRAIN______________
-            model.train()
-            for train_i, (X, Y) in tqdm.tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
-                if train_i == 0:
-                    X_test = X
-                    Y_test = Y
-
-                Y = Y.permute(0, 3, 1, 2)
-                X = resize(X, (img_size, img_size))
-                Y = resize(Y, (img_size, img_size))
-
-                if self.args.use_CNN:
-                    X = X[:, None, :, :]
-                else:
-                    X = X.view(self.args.batch_size, img_size * img_size)
-                    Y = Y.view(self.args.batch_size, img_size * img_size, 2)
-
-                X = X.to(self.DEVICE)
-                Y = Y.to(self.DEVICE)
-
-                optimizer.zero_grad()
-
-                X_hat, mean, log_var = model(X)
-                rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
-                loss = rec + kld
-
-                train_loss += loss.item()
-
-                loss.backward()
-                optimizer.step()
-
-            # ______________VAL______________
-            with torch.no_grad():
-                model.eval()
-                for eval_i, (X, Y) in tqdm.tqdm(enumerate(test_dataloader)):
-
-                    Y = Y.permute(0, 3, 1, 2)
-                    X = resize(X, (img_size, img_size))
-                    Y = resize(Y, (img_size, img_size))
-
-                    if self.args.use_CNN:
-                        X = X[:, None, :, :]
-                    else:
-                        X = X.view(self.args.batch_size, self.args.fc_flattened_dim)
-                        Y = Y.view(self.args.batch_size, self.args.fc_flattened_dim, 2)
-
-                    X = X.to(self.DEVICE)
-                    Y = Y.to(self.DEVICE)
-
-                    X_hat, mean, log_var = model(X)
-                    rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
-                    loss = rec + kld
-
-                    train_rec += rec.item()
-                    train_kld += kld.item()
-                    test_loss += loss.item()
-
-            # Wandb
-            if self.args.use_wandb:
-                wandb.log(
-                    {
-                        "train_loss": train_loss / (train_i * self.args.batch_size),
-                        "test_loss": test_loss / (eval_i * self.args.batch_size),
-                        "train_rec": train_rec / (train_i * self.args.batch_size),
-                        "train_kld": train_kld / (train_i * self.args.batch_size),
-                    }
-                )
-
-            if self.args.azure:
-                run.log(
-                    "train_loss",
-                    np.float(train_loss / (train_i * self.args.batch_size)),
-                ),
-                run.log(
-                    "test_loss", np.float(test_loss / (eval_i * self.args.batch_size))
-                ),
-                run.log(
-                    "train_rec", np.float(train_rec / (train_i * self.args.batch_size))
-                ),
-                run.log(
-                    "train_kld", np.float(train_kld / (train_i * self.args.batch_size))
-                )
-
-            # Save current model
-            if epoch % 5 == 0 and self.args.save_model and not self.args.azure:
-                save_path = self.ROOT + f"/models/{self.args.run_name}_model{epoch}.pth"
-                torch.save(model.state_dict(), save_path)
-
-            if self.args.azure:
-                log.info(
-                    "%s %s %s",
-                    f"\tEpoch {epoch + 1}",
-                    f"\tAverage train Loss: {train_loss / (train_i * self.args.batch_size)}"
-                    f"\tAverage test loss: {test_loss / (eval_i * self.args.batch_size)}",
-                )
-            else:
-                print(
-                    "\tEpoch",
-                    epoch + 1,
-                    "complete!",
-                    "\tAverage train Loss: ",
-                    train_loss / (train_i * self.args.batch_size),
-                    "\tAverage test loss: ",
-                    test_loss / (eval_i * self.args.batch_size),
-                )
-
+        trainer.fit(model, train_dataloader, test_dataloader)
         print("Finish training")
-
+        """
         if self.args.use_wandb:
             self.log_images_to_wandb(X_test, Y_test, model, img_size)
+        """
 
         # Save and register model in Azure
         if self.args.azure:
             if self.args.save_model:
                 # Save the trained model
-                model_file = self.args.model_name + ".pkl"
-                joblib.dump(value=model, filename=model_file)
+                model_file = config.experiment.model_name + ".pkl"
+                tempmodel = ConvVAE() # Hack for saving model wihtout Pytorch Lightning things
+                tempmodel.load_state_dict(model.state_dict())
+                joblib.dump(value=tempmodel, filename=model_file)
                 run.upload_file(
                     name=os.path.join(self.ROOT, "models", model_file),
                     path_or_stream="./" + model_file,
                 )
 
-            run.complete()
-            # Register the model
-            run.register_model(
-                model_path=os.path.join(self.ROOT, "models", model_file),
-                model_name=self.args.model_name,
-                tags={"Training context": "Inline Training"},
-                #properties={
-                #    "LR": run.get_metrics()["LR"],
-                #    "Epochs": run.get_metrics()["Epochs"],
-                #    "Latent dim": run.get_metrics()["Latent dim"],
-                #    "Hidden dim": run.get_metrics()["Hidden dim"],
-                #    "Overall loss": run.get_metrics()["Overall loss"],
-                #},
-            )
-        else:
-            run.complete()
+                run.complete()
+                # Register the model
+                run.register_model(
+                    model_path=os.path.join(self.ROOT, "models", model_file),
+                    model_name=self.args.model_name,
+                    tags={"Training context": "Inline Training"},
+                )
+            else:
+                run.complete()
+         
+        return trainer.logged_metrics["val_loss"]
 
 
 def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
@@ -355,7 +251,27 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
 def init_hydra(config : DictConfig) -> None:
     print(OmegaConf.to_yaml(config))
     trainer = Trainer(config)
-    trainer.train()
+    if config.experiment.optuna:
+        study = optuna.create_study(
+            direction="minimize",
+            pruner=optuna.pruners.MedianPruner(
+                    n_startup_trials=5,
+                    n_warmup_steps=5, 
+                    interval_steps=1
+            )
+        ) #, sampler=optuna.samplers.GridSampler(search_space))
+        
+        study.optimize(trainer.train, n_trials=config.experiment.n_trials) 
+        fig1 = optuna.visualization.plot_optimization_history(study)
+        fig2 = optuna.visualization.plot_intermediate_values(study)
+        fig3 = optuna.visualization.plot_param_importances(
+            study, target=lambda t: t.duration.total_seconds(), target_name="duration"
+        )
+        fig1.write_image("opt_hist.jpg")
+        fig2.write_image("lr_curves.jpg")
+        fig3.write_image("param_importances.jpg")
+    else:
+        trainer.train()
 
 if __name__ == "__main__":
     config = init_hydra()
