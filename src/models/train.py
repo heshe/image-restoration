@@ -14,7 +14,7 @@ import torch.nn as nn
 import tqdm
 import joblib
 from kornia.geometry.transform import resize
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from PIL import Image
 from torch.optim import Adam
 from pathlib import Path
@@ -23,17 +23,18 @@ import wandb
 #from src.models.model_conv32 import ConvVAE
 from src.models.model_lightning import ConvVAE
 from src.models.model_FC import Decoder, Encoder, Net
-from azureml.core import Run
 
 log = logging.getLogger(__name__)
 
 
+
 class Trainer:
-    def __init__(self):
-        hydra.initialize(config_path="../conf")
-        config = hydra.compose(config_name="config.yaml")
-        log.info(f"configuration: \n {OmegaConf.to_yaml(config)}")
-        self.args = config.experiment
+
+    def __init__(self, args):
+        #hydra.initialize(config_path="../conf")
+        #config = hydra.compose(config_name="config.yaml")
+        #log.info(f"configuration: \n {OmegaConf.to_yaml(config)}")
+        self.args = args.experiment
 
         # Set root path
         self.ROOT = str(Path(__file__).parent.parent.parent)
@@ -104,6 +105,9 @@ class Trainer:
             wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
 
     def train(self):
+        import os
+        print(os.getcwd())
+
         img_size = (
             self.args.conv_img_dim
         )  # 33 if model_conv32, else 224 for model_conv224
@@ -120,8 +124,10 @@ class Trainer:
         # Get train and test
         if self.args.azure:
             from src.azure.make_dataset_azure import load_data
+            from azureml.core import Run
 
             run = Run.get_context()  # Setup run instance for cloud
+            
             datapath = run.input_datasets["image_resto"]
             run.log("datapath", datapath)
             run.log("args", self.args)
@@ -145,10 +151,12 @@ class Trainer:
             train_dataloader = load_data(
                 train=True,
                 batch_size=self.args.batch_size,
+                path = self.ROOT
             )
             test_dataloader = load_data(
                 train=False,
                 batch_size=self.args.batch_size,
+                path = self.ROOT
             )
 
         # Init model
@@ -183,7 +191,7 @@ class Trainer:
 
             # ______________TRAIN______________
             model.train()
-            for train_i, (X, Y) in tqdm.tqdm(enumerate(train_dataloader)):
+            for train_i, (X, Y) in tqdm.tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
                 if train_i == 0:
                     X_test = X
                     Y_test = Y
@@ -266,7 +274,7 @@ class Trainer:
 
             # Save current model
             if epoch % 5 == 0 and self.args.save_model and not self.args.azure:
-                save_path = f"models/{self.args.run_name}_model{epoch}.pth"
+                save_path = self.ROOT + f"/models/{self.args.run_name}_model{epoch}.pth"
                 torch.save(model.state_dict(), save_path)
 
             if self.args.azure:
@@ -343,6 +351,11 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
     return imgs_
 
 
-if __name__ == "__main__":
-    trainer = Trainer()
+@hydra.main(config_path="../conf", config_name="config")
+def init_hydra(config : DictConfig) -> None:
+    print(OmegaConf.to_yaml(config))
+    trainer = Trainer(config)
     trainer.train()
+
+if __name__ == "__main__":
+    config = init_hydra()
