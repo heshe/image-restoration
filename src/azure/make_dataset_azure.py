@@ -68,7 +68,7 @@ class mlopsDataset(Dataset):
         return X, y
 
 
-def load_data(train=True, path=None, small_dataset=False, batch_size=64, shuffle=True):
+def load_data(train=True, path="", small_dataset=False, batch_size=64, shuffle=True):
     data = mlopsDataset(train, path, small_dataset)
     return DataLoader(data, batch_size, shuffle)
 
