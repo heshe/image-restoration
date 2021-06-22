@@ -1,13 +1,14 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
+#import sys
+#sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 # Define path to data
-path = "/Users/Morten/Downloads/archive"
-
+# path = "/Users/Morten/Downloads/archive"
+path = "C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/data"
 
 # Store raw data in "data/raw" and processeed in "data/processed"
-def load_dataset():
+def load_dataset(total_load_amount = True):
     print("Loading data... \n")
     ab1 = np.load(path + "/ab/ab/ab1.npy")
     ab2 = np.load(path + "/ab/ab/ab2.npy")
@@ -39,28 +40,51 @@ def load_dataset():
 
     train_Y = ab_processed[:cut_amount, :, :, :]
     test_Y = ab_processed[cut_amount:, :, :, :]
+    
+    if total_load_amount:
+        print("Storing full size processed data... \n")
+        torch.save(train_X, "data/processed/train_X.pt")
+        print("Train X")
+        torch.save(test_X, "data/processed/test_X.pt")
+        print("Test X")
+        torch.save(train_Y, "data/processed/train_Y.pt")
+        print("Train Y")
+        torch.save(test_Y, "data/processed/test_Y.pt")
+        print("Test Y")
 
-    print("Storing processed data... \n")
-    torch.save(train_X, "data/processed/train_X.pt")
-    print("Train X")
-    torch.save(test_X, "data/processed/test_X.pt")
-    print("Test X")
-    torch.save(train_Y, "data/processed/train_Y.pt")
-    print("Train Y")
-    torch.save(test_Y, "data/processed/test_Y.pt")
-    print("Test Y")
-
+    else:
+        amount = 100
+        print("Storing small size processed data... \n")
+        torch.save(train_X[:amount, :, :], "data/processed/train_X_small.pt")
+        print("Train X")
+        torch.save(test_X[amount:, :, :], "data/processed/test_X_small.pt")
+        print("Test X")
+        torch.save(train_Y[:amount, :, :, :], "data/processed/train_Y_small.pt")
+        print("Train Y")
+        torch.save(test_Y[amount:, :, :, :], "data/processed/test_Y_small.pt")
+        print("Test Y")
 
 class mlopsDataset(Dataset):
-    def __init__(self, train, path):
-        if train:
-            print("Loading train data...")
-            self.gray = torch.load(path + "/data/processed/train_X.pt")
-            self.ab = torch.load(path + "/data/processed/train_Y.pt")
+    def __init__(self, train, path, full_size):
+        
+        if full_size:
+            if train:
+                print("Loading train data...")
+                self.gray = torch.load(path + "/data/processed/train_X.pt")
+                self.ab = torch.load(path + "/data/processed/train_Y.pt")
+            else:
+                print("Loading test data...")
+                self.gray = torch.load(path + "/data/processed/test_X.pt")
+                self.ab = torch.load(path + "/data/processed/test_Y.pt")
         else:
-            print("Loading test data...")
-            self.gray = torch.load(path + "/data/processed/test_X.pt")
-            self.ab = torch.load(path + "/data/processed/test_Y.pt")
+            if train:
+                print("Loading train data...")
+                self.gray = torch.load(path + "/data/processed/train_X_small.pt")
+                self.ab = torch.load(path + "/data/processed/train_Y_small.pt")
+            else:
+                print("Loading test data...")
+                self.gray = torch.load(path + "/data/processed/test_X_small.pt")
+                self.ab = torch.load(path + "/data/processed/test_Y_small.pt")
 
     def __len__(self):
         return self.gray.size()[0]
@@ -71,10 +95,10 @@ class mlopsDataset(Dataset):
         return X, y
 
 
-def load_data(train=True, batch_size=64, shuffle=True, path = ""):
-    data = mlopsDataset(train, path)
-    return DataLoader(data, batch_size, shuffle)
+def load_data(train=True, batch_size=64, shuffle=True, path = "", full_size=True):
+    data = mlopsDataset(train, path, full_size)
+    return DataLoader(data, batch_size, shuffle,)
 
 
 if __name__ == "__main__":
-    load_dataset()
+    load_dataset(total_load_amount=False)
