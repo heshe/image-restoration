@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 # sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 # Define path to data
-path = "C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/data/"
+path = "/Users/Morten/Downloads/archive"
 
 
 # Store raw data in "data/raw" and processeed in "data/processed"
@@ -20,9 +20,13 @@ def load_dataset():
     ab_tensor = torch.from_numpy(ab)
     gray_tensor = torch.from_numpy(gray_imgs)
 
+    ten_pct_mark = int(ab_tensor.size()[0] * (0.1))
+    gray_tensor = gray_tensor[:ten_pct_mark, :, :]
+    ab_tensor = ab_tensor[:ten_pct_mark, :, :, :]
+
     print("Storing raw data... \n")
-    torch.save(ab_tensor, "data/raw/ab.pt")
-    torch.save(gray_tensor, "data/raw/gray.pt")
+    #torch.save(ab_tensor, "data/raw/ab.pt")
+    #torch.save(gray_tensor, "data/raw/gray.pt")
 
     # ____________ Process ___________
     ab_processed = ab_tensor / 255
@@ -38,9 +42,13 @@ def load_dataset():
 
     print("Storing processed data... \n")
     torch.save(train_X, "data/processed/train_X.pt")
+    print("Train X")
     torch.save(test_X, "data/processed/test_X.pt")
+    print("Test X")
     torch.save(train_Y, "data/processed/train_Y.pt")
+    print("Train Y")
     torch.save(test_Y, "data/processed/test_Y.pt")
+    print("Test Y")
 
 
 class mlopsDataset(Dataset):

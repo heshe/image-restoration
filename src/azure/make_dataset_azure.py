@@ -7,8 +7,7 @@ from torch.utils.data import DataLoader, Dataset
 
 def load_dataset(path=None, train=True, small_dataset=False):
     print("Loading data... \n")
-    train_path = None  # TODO: Change this!!!
-    gray_imgs = np.load(train_path + "/gray_scale.npy")
+    gray_imgs = np.load(path + "/gray_scale.npy")
     gray_tensor = torch.from_numpy(gray_imgs)
 
     ab1 = np.load(path + "/ab1.npy")

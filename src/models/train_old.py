@@ -3,34 +3,50 @@ Adapted from
 https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_AutoEncoder.ipynb
 A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
-import logging
+import argparse
+import sys
 
 import cv2
-import os
-import hydra
 import numpy as np
 import torch
 import torch.nn as nn
 import tqdm
 from kornia.geometry.transform import resize
-from omegaconf import OmegaConf
 from PIL import Image
 from torch.optim import Adam
 
 import wandb
+from src.data.make_dataset import load_data
 from src.models.model_conv32 import ConvVAE
 from src.models.model_FC import Decoder, Encoder, Net
-# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
-# from azureml.core import Run
-log = logging.getLogger(__name__)
 
 
 class Trainer:
     def __init__(self):
-        hydra.initialize(config_path="../conf")
-        config = hydra.compose(config_name="config.yaml")
-        log.info(f"configuration: \n {OmegaConf.to_yaml(config)}")
-        self.args = config.experiment
+        parser = argparse.ArgumentParser(description="Training arguments")
+        parser.add_argument("--lr", default=1e-3, type=float)
+        parser.add_argument("--n_epochs", default=5, type=int)
+        parser.add_argument("--batch_size", default=16, type=int)
+        parser.add_argument("--fc_flattened_dim", default=224 * 224, type=int)
+        parser.add_argument("--fc_latent_dim", default=20, type=int)
+        parser.add_argument("--fc_hidden_dim", default=400, type=int)
+        parser.add_argument("--conv_img_dim", default=33, type=int)
+
+        parser.add_argument("--use_wandb", default=True, type=bool)
+        parser.add_argument("--plot_results", default=True, type=bool)
+        parser.add_argument("--use_cuda", default=False, type=bool)
+        parser.add_argument("--use_CNN", default=True, type=bool)
+
+        parser.add_argument(
+            "--dataset_path",
+            default="C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/data",
+        )
+        parser.add_argument("--run_name", default="default_run")
+        # import sys
+        # sys.argv=[""]
+        # args = parser.parse_args()
+        self.args = parser.parse_args(sys.argv[1:])
+        print(sys.argv)
 
     def loss_function(self, x, x_hat, mean, log_var):
         reproduction_loss = nn.functional.binary_cross_entropy(
@@ -115,35 +131,8 @@ class Trainer:
         )
 
         # Get train and test
-        if self.args.azure:
-            from src.azure.make_dataset_azure import load_data
-
-            run = Run.get_context()  # Setup run instance for cloud
-            datapath = path = run.input_datasets["image_resto"]
-            train_dataloader = load_data(
-                train=True,
-                path=datapath,
-                small_data=self.args.small_dataset,
-                batch_size=self.args.batch_size,
-            )
-            test_dataloader = load_data(
-                train=False,
-                path=datapath,
-                small_data=self.args.small_dataset,
-                batch_size=self.args.batch_size,
-            )
-
-        else:
-            from src.data.make_dataset import load_data
-
-            train_dataloader = load_data(
-                train=True,
-                batch_size=self.args.batch_size,
-            )
-            test_dataloader = load_data(
-                train=False,
-                batch_size=self.args.batch_size,
-            )
+        train_dataloader = load_data(batch_size=self.args.batch_size)
+        test_dataloader = load_data(train=False, batch_size=self.args.batch_size)
 
         # Init model
         if self.args.use_CNN:
@@ -240,76 +229,24 @@ class Trainer:
                     }
                 )
 
-            if self.azure:
-                run.log(
-                    "train_loss",
-                    np.float(train_loss / (train_i * self.args.batch_size)),
-                ),
-                run.log(
-                    "test_loss", np.float(test_loss / (eval_i * self.args.batch_size))
-                ),
-                run.log(
-                    "train_rec", np.float(train_rec / (train_i * self.args.batch_size))
-                ),
-                run.log(
-                    "train_kld", np.float(train_kld / (train_i * self.args.batch_size))
-                )
-
             # Save current model
-            if epoch % 5 == 0 and self.args.save_model and not self.args.azure:
+            if epoch % 5 == 0:
                 save_path = f"models/{self.args.run_name}_model{epoch}.pth"
                 torch.save(model.state_dict(), save_path)
 
-            if self.args.azure:
-                log.info(
-                    "%s %s %s",
-                    f"\tEpoch {epoch + 1}",
-                    f"\tAverage train Loss: {train_loss / (train_i * self.args.batch_size)}"
-                    f"\tAverage test loss: {test_loss / (eval_i * self.args.batch_size)}",
-                )
-            else:
-                print(
-                    "\tEpoch",
-                    epoch + 1,
-                    "complete!",
-                    "\tAverage train Loss: ",
-                    train_loss / (train_i * self.args.batch_size),
-                    "\tAverage test loss: ",
-                    test_loss / (eval_i * self.args.batch_size),
-                )
+            print(
+                "\tEpoch",
+                epoch + 1,
+                "complete!",
+                "\tAverage train Loss: ",
+                train_loss / (train_i * self.args.batch_size),
+                "\tAverage test loss: ",
+                test_loss / (eval_i * self.args.batch_size),
+            )
 
         print("Finish training")
 
-        if self.args.use_wandb:
-            self.log_images_to_wandb(X_test, Y_test, model, img_size)
-
-        # Save and register model in Azure
-        if self.args.azure:
-            if self.args.save_model:
-                # Save the trained model
-                model_file = self.args.model_name + ".pkl"
-                joblib.dump(value=model, filename=model_file)
-                run.upload_file(
-                    name=os.path.join(self.ROOT, "models", model_file),
-                    path_or_stream="./" + model_file,
-                )
-
-            run.complete()
-            # Register the model
-            run.register_model(
-                model_path=os.path.join(self.ROOT, "models", model_file),
-                model_name=self.args.model_name,
-                tags={"Training context": "Inline Training"},
-                properties={
-                    "LR": run.get_metrics()["LR"],
-                    "Epochs": run.get_metrics()["Epochs"],
-                    "Latent dim": run.get_metrics()["Latent dim"],
-                    "Hidden dim": run.get_metrics()["Hidden dim"],
-                    "Overall loss": run.get_metrics()["Overall loss"],
-                },
-            )
-        else:
-            run.complete()
+        self.log_images_to_wandb(X_test, Y_test, model, img_size)
 
 
 def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
