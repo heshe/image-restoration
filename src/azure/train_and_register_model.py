@@ -54,7 +54,7 @@ image_data = ws.datasets.get(args.data_name)
 script_config = ScriptRunConfig(
     source_directory=ROOT,
     script=os.path.join(ROOT, "src", "models", "train.py"),
-    arguments=["experiment.input_data", image_data.as_named_input("image_resto").as_mount()],
+    #arguments=["experiment.input_data", image_data.as_named_input("image_resto").as_mount()],
     environment=project_env,
 )  # Use the environment created previously
 

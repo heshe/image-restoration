@@ -1,12 +1,27 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
+from pathlib import Path
 # from numpy.lib.twodim_base import _trilu_indices_form_dispatcher
 # sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 
 
+from azureml.core import Workspace, Dataset
+# Azure specific
+subscription_id = 'e532aafd-37bb-4999-a15d-df27df5b4fae'
+resource_group = 'mlops'
+workspace_name = 'mlops'
+
+workspace = Workspace(subscription_id, resource_group, workspace_name)
+
 def load_dataset(path=None, train=True, small_dataset=False):
     print("Loading data... \n")
+    dataset = Dataset.get_by_name(workspace, name='image-resto')
+
+    ROOT = str(Path(__file__).parent.parent.parent)
+    dataset.download(target_path= ROOT + '/data/raw', overwrite=False)
+
+    path = ROOT + '/data/raw'
     gray_imgs = np.load(path + "/gray_scale.npy")
     gray_tensor = torch.from_numpy(gray_imgs)
 
