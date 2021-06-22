@@ -60,7 +60,7 @@ class Trainer:
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
         return reproduction_loss, 0.01 * KLD
 
-    def log_images_to_wandb(self, train_X, train_Y, model, img_size):
+    def log_images_to_wandb(self, test_X, test_Y, model, img_size):
         # Generate reconstructions
         if self.args.use_wandb:
 
@@ -69,11 +69,8 @@ class Trainer:
             model.eval()
             with torch.no_grad():
 
-                X = train_X[:n_images_to_log, :, :]
-                Y = train_Y[:n_images_to_log, :, :, :]
-
-                X = torch.from_numpy(X) / 255
-                Y = torch.from_numpy(Y) / 255
+                X = test_X[:n_images_to_log, :, :]
+                Y = test_Y[:n_images_to_log, :, :, :]
 
                 Y = Y.permute(0, 3, 1, 2)
                 X = resize(X, (img_size, img_size))

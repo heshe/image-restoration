@@ -21,6 +21,8 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
+        self.bn1 = nn.BatchNorm2d(init_channels)
+
         self.enc2 = nn.Conv2d(
             in_channels=init_channels,
             out_channels=init_channels * 2,
@@ -28,6 +30,8 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
+        self.bn2 = nn.BatchNorm2d(init_channels*2)
+
         self.enc3 = nn.Conv2d(
             in_channels=init_channels * 2,
             out_channels=init_channels * 4,
@@ -35,6 +39,8 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
+        self.bn3 = nn.BatchNorm2d(init_channels*4)
+
 
         # fully connected layers for learning representations
         self.fc1 = nn.Linear(init_channels * 4, latent_dim)
@@ -50,6 +56,8 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=0,
         )
+        self.bn4 = nn.BatchNorm2d(init_channels*4)
+
         self.dec2 = nn.ConvTranspose2d(
             in_channels=init_channels * 4,
             out_channels=init_channels * 2,
@@ -57,6 +65,8 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
+        self.bn5 = nn.BatchNorm2d(init_channels*2)
+
         self.dec3 = nn.ConvTranspose2d(
             in_channels=init_channels * 2,
             out_channels=init_channels,
@@ -64,6 +74,8 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
+        self.bn6 = nn.BatchNorm2d(init_channels)
+
 
         self.dec4 = nn.ConvTranspose2d(
             in_channels=init_channels,
@@ -72,6 +84,8 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
+        self.bn7 = nn.BatchNorm2d(2)
+
 
         self.dec5 = nn.ConvTranspose2d(
             in_channels=2, out_channels=2, kernel_size=kernel_size, stride=2, padding=1
@@ -89,9 +103,9 @@ class ConvVAE(nn.Module):
 
     def forward(self, x):
         # ____________________ENCODING____________________
-        x = F.relu(self.enc1(x))
-        x = F.relu(self.enc2(x))
-        x = F.relu(self.enc3(x))
+        x = self.bn1(F.dropout(F.relu(self.enc1(x)), 0.5))
+        x = self.bn2(F.dropout(F.relu(self.enc2(x)), 0.5))
+        x = self.bn3(F.dropout(F.relu(self.enc3(x)), 0.5))
         batch, _, _, _ = x.shape
         x = F.adaptive_avg_pool2d(x, 1).reshape(batch, -1)
         hidden = self.fc1(x)
@@ -106,9 +120,9 @@ class ConvVAE(nn.Module):
         z = z.view(-1, self.latent_dim, 1, 1)
 
         # ____________________DECODING____________________
-        x = F.relu(self.dec1(z))
-        x = F.relu(self.dec2(x))
-        x = F.relu(self.dec3(x))
-        x = F.relu(self.dec4(x))
+        x = self.bn4(F.relu(self.dec1(z)))
+        x = self.bn5(F.relu(self.dec2(x)))
+        x = self.bn6(F.relu(self.dec3(x)))
+        x = self.bn7(F.relu(self.dec4(x)))
         reconstruction = torch.relu(self.dec5(x))
         return reconstruction, mu, log_var
