@@ -14,7 +14,7 @@ workspace_name = 'mlops'
 
 workspace = Workspace(subscription_id, resource_group, workspace_name)
 
-def load_dataset(path=None, train=True, small_dataset=False):
+def load_dataset(path="", train=True, small_dataset=False):
     print("Loading data... \n")
     dataset = Dataset.get_by_name(workspace, name='image-resto')
 
