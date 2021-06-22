@@ -1,4 +1,3 @@
-
 """
 Adapted from
 https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_AutoEncoder.ipynb
@@ -30,7 +29,6 @@ import pytorch_lightning as pl
 
 log = logging.getLogger(__name__)
 
-ROOT = str(Path(__file__).parent.parent.parent)
 
 hydra.initialize(config_path="../conf")
 config = hydra.compose(config_name="config.yaml")
@@ -78,7 +76,7 @@ trainer = pl.Trainer(
     limit_train_batches=0.1, 
     max_epochs=config.experiment.n_epochs,
     precision=16,
-    gpus=-1,
+    gpus=1,
 )
 
 trainer.fit(model, train_dataloader, test_dataloader)
@@ -89,17 +87,19 @@ if config.experiment.azure:
     if config.experiment.save_model:
         # Save the trained model
         model_file = config.experiment.model_name + ".pkl"
-        tempmodel = ConvVAE() # Hack for saving model wihtout Pytorch Lightning things
-        tempmodel.load_state_dict(model.state_dict())
-        joblib.dump(value=tempmodel, filename=model_file, protocol=4)
+        import sys
+        run.log("size of model", sys.getsizeof(model))
+        run.log("type of model", type(model))
+        joblib.dump(value=model, filename=model)
         run.upload_file(
-            name=os.path.join(ROOT, "models", model_file),
+            name=os.path.join(self.ROOT, "models", model_file),
             path_or_stream="./" + model_file,
         )
+
         run.complete()
         # Register the model
         run.register_model(
-            model_path=os.path.join(ROOT, "models", model_file),
+            model_path=os.path.join(self.ROOT, "models", model_file),
             model_name=config.experiment.model_name,
             tags={"Training context": "Inline Training"},
             #properties={

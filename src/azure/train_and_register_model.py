@@ -53,7 +53,7 @@ image_data = ws.datasets.get(args.data_name)
 # Create a script config
 script_config = ScriptRunConfig(
     source_directory=ROOT,
-    script=os.path.join(ROOT, "src", "models", "train_azure_new.py"),
+    script=os.path.join(ROOT, "src", "models", "train_lightning.py"),
     arguments=["--input-data", image_data.as_named_input("image_resto").as_mount()],
     environment=project_env,
 )  # Use the environment created previously
