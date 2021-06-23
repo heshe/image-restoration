@@ -189,7 +189,10 @@ class ConvVAE(pl.LightningModule):
 
         if batch_idx==0:
             if self.run:
-                self.log_images_to_azure(X, Y, X_hat)
+                X_cpu = X.to('cpu')
+                X_hat_cpu = X_hat.to('cpu')
+                Y_cpu = Y.to('cpu')
+                self.log_images_to_azure(X_cpu, Y_cpu, X_hat_cpu)
                 self.first_run = False
 
         return val_loss
