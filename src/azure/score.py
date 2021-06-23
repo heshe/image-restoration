@@ -5,11 +5,21 @@ import dotenv
 import joblib
 import numpy as np
 import torch
+from pathlib import Path
 
+
+
+def init():
+    print("This is init")
+
+def run(data):
+    test = json.loads(data)
+    print(f"received data {test}")
+    return f"test is {test}"
 
 # Called when the service is loaded
-def init():
-    project_dir = os.path.join(os.path.dirname(__file__), os.pardir, os.pardir)
+def methodinit():
+    project_dir = str(Path(__file__).parent.parent.parent)
     dotenv_path = os.path.join(project_dir, ".env")
     dotenv.load_dotenv(dotenv_path)
     global model
@@ -20,7 +30,7 @@ def init():
 
 
 # Called when a request is received
-def run(raw_data):
+def methodrun(raw_data):
     # Get the input data as a numpy array
     data = np.array(json.loads(raw_data)["data"])
     data = torch.from_numpy(data) / 255
