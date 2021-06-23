@@ -8,6 +8,7 @@ import cv2
 from kornia.geometry.transform import resize
 from pytorch_lightning.callbacks import Callback
 from PIL import Image
+import matplotlib.pyplot as plt
 
 class LoggingCallback(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
@@ -253,14 +254,14 @@ class ConvVAE(pl.LightningModule):
                 im_o = Image.fromarray(img)
                 self.run.log_image(
                     name=f"orig{i}",
-                    plot=im_o
+                    plot=plt.imshow(im_o)
                 )
             
         for i, img in enumerate(X_hat):
             im_r = Image.fromarray(img)
             self.run.log_image(
                 name=f"recon{i}",
-                plot=im_r
+                plot=plt.imshow(im_r)
             )
 
 
