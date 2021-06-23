@@ -270,7 +270,7 @@ class ConvVAE(pl.LightningModule):
 
             
         for i, img in enumerate(X_hat):
-            img_path = os.path.join(self.ROOT, "reports", "figures", "recon", f"recon{i}.jpg")
+            img_path = os.path.join(self.ROOT, "reports", "figures", "recon", f"recon{i}_{self.round}.jpg")
             im_r = Image.fromarray(img)
             plt.figure()
             plt.imshow(im_r)
