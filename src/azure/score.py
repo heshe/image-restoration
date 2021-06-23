@@ -1,5 +1,6 @@
 import json
 import os
+import dotenv
 
 import joblib
 import cv2
@@ -11,7 +12,9 @@ from kornia.geometry.transform import resize
 
 # Called when the service is loaded
 def init():
-    #project_dir = str(Path(__file__).parent.parent.parent)
+    project_dir = str(Path(__file__).parent.parent.parent)
+    dotenv_path = os.path.join(project_dir, ".env")
+    dotenv.load_dotenv(dotenv_path)
     global model
     # Get the path to the deployed model file and load it
     print(os.getenv("AZUREML_MODEL_DIR"))
