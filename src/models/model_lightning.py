@@ -184,11 +184,6 @@ class ConvVAE(pl.LightningModule):
         self.log('val_loss', val_loss)
         return val_loss
 
-    def on_validation_epoch_end(self) -> None:
-        if self.trial:
-            self.trial.report(1, self.current_epoch)
-        return super().on_validation_epoch_end()
-
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.lr)
 
