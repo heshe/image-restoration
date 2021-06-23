@@ -253,14 +253,14 @@ class ConvVAE(pl.LightningModule):
                 im_o = Image.fromarray(img)
                 self.run.log_image(
                     name=f"orig{i}",
-                    plt=im_o
+                    plot=im_o
                 )
             
         for i, img in enumerate(X_hat):
             im_r = Image.fromarray(img)
             self.run.log_image(
                 name=f"recon{i}",
-                plt=im_r
+                plot=im_r
             )
 
 
