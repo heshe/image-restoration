@@ -172,6 +172,7 @@ class Trainer:
                 path=datapath,
                 small_dataset=self.args.small_dataset,
                 batch_size=self.args.batch_size,
+                shuffle=False
             )
 
         else:
@@ -233,7 +234,11 @@ class Trainer:
             if self.args.save_model:
                 # Save the trained model
                 model_file = self.args.model_name + ".pkl"
-                tempmodel = ConvVAE() # Hack for saving model wihtout Pytorch Lightning things
+                tempmodel = ConvVAE(
+                    lr=self.args.lr,
+                    latent_dim=self.args.latent_dim,
+                    img_size=self.args.conv_img_dim,
+                ) # Hack for saving model wihtout Pytorch Lightning things
                 tempmodel.load_state_dict(model.state_dict())
                 joblib.dump(value=tempmodel, filename=model_file)
                 run.upload_file(

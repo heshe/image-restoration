@@ -5,9 +5,12 @@ import pytorch_lightning as pl
 import numpy as np
 import optuna
 import cv2
+import os
 from kornia.geometry.transform import resize
 from pytorch_lightning.callbacks import Callback
 from PIL import Image
+import matplotlib.pyplot as plt
+from pathlib import Path
 
 class LoggingCallback(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
@@ -38,8 +41,13 @@ class ConvVAE(pl.LightningModule):
         self.img_size = img_size
         self.dropout_rate = dropout_rate
         self.trial = trial
+
+        # Logging and reporting
         self.run = run
         self.first_run = True
+        self.ROOT = str(Path(__file__).parent.parent.parent)
+        self.round = 0 # Used to avoid name conflict in files
+
 
         # ____________________ENCODER____________________
         self.enc1 = nn.Conv2d(
@@ -189,7 +197,10 @@ class ConvVAE(pl.LightningModule):
 
         if batch_idx==0:
             if self.run:
-                self.log_images_to_azure(X, Y, X_hat)
+                X_cpu = X.to('cpu')
+                X_hat_cpu = X_hat.to('cpu')
+                Y_cpu = Y.to('cpu')
+                self.log_images_to_azure(X_cpu, Y_cpu, X_hat_cpu)
                 self.first_run = False
 
         return val_loss
@@ -247,18 +258,28 @@ class ConvVAE(pl.LightningModule):
 
         if self.first_run: # Log originals in first run
             for i, img in enumerate(X_origin):
+                img_path = os.path.join(self.ROOT, "reports", "figures", "orig", f"orig{i}.jpg")
                 im_o = Image.fromarray(img)
+                plt.figure()
+                plt.imshow(im_o)
+                plt.savefig(img_path)
                 self.run.log_image(
                     name=f"orig{i}",
-                    plt=im_o
+                    path=img_path
                 )
+
             
         for i, img in enumerate(X_hat):
+            img_path = os.path.join(self.ROOT, "reports", "figures", "recon", f"recon{i}_{self.round}.jpg")
             im_r = Image.fromarray(img)
+            plt.figure()
+            plt.imshow(im_r)
+            plt.savefig(img_path)
             self.run.log_image(
-                name=f"recon{i}",
-                plt=im_r
+                name=f"recon{i}_{self.round}",
+                path=img_path
             )
+        self.round += 1
 
 
         
