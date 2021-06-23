@@ -11,12 +11,10 @@ import hydra
 import numpy as np
 import torch
 import torch.nn as nn
-import tqdm
 import joblib
 from kornia.geometry.transform import resize
 from omegaconf import OmegaConf, DictConfig
 from PIL import Image
-from torch.optim import Adam
 from pathlib import Path
 
 import wandb
@@ -26,7 +24,6 @@ from src.models.model_lightning import ConvVAE, LoggingCallback
 
 
 log = logging.getLogger(__name__)
-
 
 
 class Trainer:
@@ -102,15 +99,15 @@ class Trainer:
             wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
 
     def train(self, trial=None):
-        
+
         if self.args.optuna and trial:
-            self.args.lr = trial.suggest_loguniform('lr', 1e-5, 1e-2)
+            self.args.lr = trial.suggest_loguniform("lr", 1e-5, 1e-2)
             self.args.latent_dim = trial.suggest_int("latent_dim", 32, 512)
             self.args.dropout = trial.suggest_uniform("dropout", 0.0, 1)
 
-        img_size = (
-            self.args.conv_img_dim
-        )  # 33 if model_conv32, else 224 for model_conv224
+        # img_size = (
+        #     self.args.conv_img_dim
+        # )  # 33 if model_conv32, else 224 for model_conv224
 
         # Init wandb
         if self.args.use_wandb:
@@ -127,7 +124,7 @@ class Trainer:
             from azureml.core import Run
 
             run = Run.get_context()  # Setup run instance for cloud
-            
+
             datapath = run.input_datasets["image_resto"]
             run.log("datapath", datapath)
             run.log("args", self.args)
@@ -149,14 +146,12 @@ class Trainer:
             from src.data.make_dataset import load_data
 
             train_dataloader = load_data(
-                train=True,
-                batch_size=self.args.batch_size,
-                path = self.ROOT
+                train=True, batch_size=self.args.batch_size, path=self.ROOT
             )
             test_dataloader = load_data(
                 train=False,
                 batch_size=self.args.batch_size,
-                path = self.ROOT,
+                path=self.ROOT,
                 shuffle=False,
             )
 
@@ -165,26 +160,25 @@ class Trainer:
             lr=self.args.lr,
             latent_dim=self.args.latent_dim,
             img_size=self.args.conv_img_dim,
-            trial=trial
+            trial=trial,
         )
 
         if self.args.azure:
             trainer = pl.Trainer(
-                #limit_train_batches=0.1, 
+                # limit_train_batches=0.1,
                 max_epochs=self.args.n_epochs,
                 precision=16,
                 gpus=-1,
-                callbacks=[LoggingCallback()]
+                callbacks=[LoggingCallback()],
             )
         else:
             trainer = pl.Trainer(
-                #limit_train_batches=0.1, 
+                # limit_train_batches=0.1,
                 max_epochs=self.args.n_epochs,
-                callbacks=[LoggingCallback()]
+                callbacks=[LoggingCallback()],
             )
 
-
-        #if self.args.use_wandb:
+        # if self.args.use_wandb:
         #    wandb.watch(model, log_freq=100)
 
         print("Start training VAE...")
@@ -200,7 +194,9 @@ class Trainer:
             if self.args.save_model:
                 # Save the trained model
                 model_file = config.experiment.model_name + ".pkl"
-                tempmodel = ConvVAE() # Hack for saving model wihtout Pytorch Lightning things
+                tempmodel = (
+                    ConvVAE()
+                )  # Hack for saving model wihtout Pytorch Lightning things
                 tempmodel.load_state_dict(model.state_dict())
                 joblib.dump(value=tempmodel, filename=model_file)
                 run.upload_file(
@@ -217,7 +213,7 @@ class Trainer:
                 )
             else:
                 run.complete()
-         
+
         return trainer.logged_metrics["val_loss"]
 
 
@@ -244,20 +240,18 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
 
 
 @hydra.main(config_path="../conf", config_name="config")
-def init_hydra(config : DictConfig) -> None:
+def init_hydra(config: DictConfig) -> None:
     print(OmegaConf.to_yaml(config))
     trainer = Trainer(config)
     if config.experiment.optuna:
         study = optuna.create_study(
             direction="minimize",
             pruner=optuna.pruners.MedianPruner(
-                    n_startup_trials=5,
-                    n_warmup_steps=5, 
-                    interval_steps=1
-            )
-        ) #, sampler=optuna.samplers.GridSampler(search_space))
-        
-        study.optimize(trainer.train, n_trials=config.experiment.n_trials) 
+                n_startup_trials=5, n_warmup_steps=5, interval_steps=1
+            ),
+        )  # , sampler=optuna.samplers.GridSampler(search_space))
+
+        study.optimize(trainer.train, n_trials=config.experiment.n_trials)
         fig1 = optuna.visualization.plot_optimization_history(study)
         fig2 = optuna.visualization.plot_intermediate_values(study)
         fig3 = optuna.visualization.plot_param_importances(
@@ -270,6 +264,7 @@ def init_hydra(config : DictConfig) -> None:
         fig4.write_image("parallel_coordinates.jpg")
     else:
         trainer.train()
+
 
 if __name__ == "__main__":
     config = init_hydra()
