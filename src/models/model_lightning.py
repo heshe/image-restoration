@@ -16,9 +16,12 @@ class LoggingCallback(Callback):
             if pl_module.trial.should_prune():
                 raise optuna.TrialPruned()
         
+        if pl_module.run:
+            pl_module.run.log("Val loss", trainer.logged_metrics["val_loss"].item())
+        
     def on_train_epoch_end(self, trainer, pl_module):
         if pl_module.run:
-            pl_module.run.log("Train loss", trainer.logged_metrics["train_loss"])
+            pl_module.run.log("Train loss", trainer.logged_metrics["train_loss"].item())
 
 class ConvVAE(pl.LightningModule):
     def __init__(self, lr=0.001, img_size=33, latent_dim=256, dropout_rate=0.5, trial=None, run=None):
