@@ -14,23 +14,12 @@ from src.models.model_lightning import ConvVAE
 
 # Called when the service is loaded
 def init():
-    #project_dir = str(Path(__file__).parent.parent.parent)
-    #dotenv_path = os.path.join(project_dir, ".env")
-    #dotenv.load_dotenv(dotenv_path)
     global model
     # Get the path to the deployed model file and load it
     print(os.getenv("AZUREML_MODEL_DIR"))
     model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "image_resto.pkl")
     model = joblib.load(model_path)
 
-def init_temp():
-    global model
-    model = ConvVAE()
-
-def run_temp(data):
-    test = json.loads(data)
-    print(f"received data {test}")
-    return f"test is {test}"
 
 # Called when a request is received
 def run(data):
