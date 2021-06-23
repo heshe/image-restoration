@@ -6,7 +6,7 @@ import optuna
 from kornia.geometry.transform import resize
 from pytorch_lightning.callbacks import Callback
 
-class ValidationCallback(Callback):
+class LoggingCallback(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
         val_loss = trainer.logged_metrics["val_loss"]
         epoch = trainer.logged_metrics["epoch"]
@@ -15,9 +15,16 @@ class ValidationCallback(Callback):
             
             if pl_module.trial.should_prune():
                 raise optuna.TrialPruned()
+        
+        if pl_module.run:
+            pl_module.run.log("Val loss", trainer.logged_metrics["val_loss"].item())
+        
+    def on_train_epoch_end(self, trainer, pl_module):
+        if pl_module.run:
+            pl_module.run.log("Train loss", trainer.logged_metrics["train_loss"].item())
 
 class ConvVAE(pl.LightningModule):
-    def __init__(self, lr=0.001, img_size=33, latent_dim=256, dropout_rate=0.5, trial=None):
+    def __init__(self, lr=0.001, img_size=33, latent_dim=256, dropout_rate=0.5, trial=None, run=None):
         super(ConvVAE, self).__init__()
 
         kernel_size = 3  # (4, 4) kernel
@@ -28,6 +35,7 @@ class ConvVAE(pl.LightningModule):
         self.img_size = img_size
         self.dropout_rate = dropout_rate
         self.trial = trial
+        self.run = run
 
         # ____________________ENCODER____________________
         self.enc1 = nn.Conv2d(

@@ -18,6 +18,9 @@ from omegaconf import OmegaConf, DictConfig
 from PIL import Image
 from torch.optim import Adam
 from pathlib import Path
+import argparse
+import sys
+import time
 
 import wandb
 import pytorch_lightning as pl
@@ -27,11 +30,38 @@ from src.models.model_FC import Decoder, Encoder, Net
 
 log = logging.getLogger(__name__)
 
-
-
 class Trainer:
-    def __init__(self, args):
-        self.args = args.experiment
+    def __init__(self):
+        parser = argparse.ArgumentParser(description="Deployment arguments")
+        parser.add_argument("--lr", default=0.001, type=float)
+        parser.add_argument("--n_epochs", default=1, type=int)
+        parser.add_argument("--batch_size", default=16, type=int)
+        parser.add_argument("--latent_dim", default=256, type=int)
+        parser.add_argument("--dropout", default=0.5, type=float)
+        parser.add_argument("--conv_img_dim", default=33, type=int)
+        parser.add_argument('--use_wandb', dest='use_wandb', action='store_true')
+        parser.set_defaults(use_wandb=False)
+        parser.add_argument('--plot_results', dest='plot_results', action='store_true')
+        parser.set_defaults(plot_results=False)
+        parser.add_argument('--no-cuda', dest='use_cuda', action='store_false')
+        parser.set_defaults(use_cuda=True)
+        parser.add_argument('--no-CNN', dest='use_CNN', action='store_false')
+        parser.set_defaults(use_CNN=True)
+        parser.add_argument('--no-azure', dest='azure', action='store_false')
+        parser.set_defaults(azure=True)
+        parser.add_argument("--model_name", default="image_resto", type=str)
+        parser.add_argument("--n_trials", default=10, type=int)
+        parser.add_argument('--small_dataset', dest='small_dataset', action='store_true')
+        parser.set_defaults(small_dataset=False)
+        parser.add_argument("--run_name", default="default_run", type=str)
+        parser.add_argument('--no-save_model', dest='save_model', action='store_false')
+        parser.set_defaults(save_model=True)
+        parser.add_argument('--optuna', dest='optuna', action='store_true')
+        parser.set_defaults(optuna=False)
+        parser.add_argument("--input_data", default="image-resto", type=str)
+
+        args = parser.parse_args(sys.argv[1:])
+        self.args = args
 
         # Set root path
         self.ROOT = str(Path(__file__).parent.parent.parent)
@@ -165,12 +195,12 @@ class Trainer:
             lr=self.args.lr,
             latent_dim=self.args.latent_dim,
             img_size=self.args.conv_img_dim,
-            trial=trial
+            trial=trial,
+            run=run,
         )
 
         if self.args.azure:
             trainer = pl.Trainer(
-                #limit_train_batches=0.1, 
                 max_epochs=self.args.n_epochs,
                 precision=16,
                 gpus=-1,
@@ -186,10 +216,14 @@ class Trainer:
 
         #if self.args.use_wandb:
         #    wandb.watch(model, log_freq=100)
-
+        run.log("Train len", len(train_dataloader))
+        run.log("Val len", len(test_dataloader))
+        start = time.time()
         print("Start training VAE...")
         trainer.fit(model, train_dataloader, test_dataloader)
         print("Finish training")
+        end = time.time()
+        run.log("Time spent", end-start)
         """
         if self.args.use_wandb:
             self.log_images_to_wandb(X_test, Y_test, model, img_size)
@@ -199,7 +233,7 @@ class Trainer:
         if self.args.azure:
             if self.args.save_model:
                 # Save the trained model
-                model_file = config.experiment.model_name + ".pkl"
+                model_file = self.args.model_name + ".pkl"
                 tempmodel = ConvVAE() # Hack for saving model wihtout Pytorch Lightning things
                 tempmodel.load_state_dict(model.state_dict())
                 joblib.dump(value=tempmodel, filename=model_file)
@@ -243,33 +277,6 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
     return imgs_
 
 
-@hydra.main(config_path="../conf", config_name="config")
-def init_hydra(config : DictConfig) -> None:
-    print(OmegaConf.to_yaml(config))
-    trainer = Trainer(config)
-    if config.experiment.optuna:
-        study = optuna.create_study(
-            direction="minimize",
-            pruner=optuna.pruners.MedianPruner(
-                    n_startup_trials=5,
-                    n_warmup_steps=5, 
-                    interval_steps=1
-            )
-        ) #, sampler=optuna.samplers.GridSampler(search_space))
-        
-        study.optimize(trainer.train, n_trials=config.experiment.n_trials) 
-        fig1 = optuna.visualization.plot_optimization_history(study)
-        fig2 = optuna.visualization.plot_intermediate_values(study)
-        fig3 = optuna.visualization.plot_param_importances(
-            study, target=lambda t: t.duration.total_seconds(), target_name="duration"
-        )
-        fig4 = optuna.visualization.plot_parallel_coordinate(study)
-        fig1.write_image("opt_hist.jpg")
-        fig2.write_image("lr_curves.jpg")
-        fig3.write_image("param_importances.jpg")
-        fig4.write_image("parallel_coordinates.jpg")
-    else:
-        trainer.train()
-
 if __name__ == "__main__":
-    config = init_hydra()
+    trainer = Trainer()
+    trainer.train()
