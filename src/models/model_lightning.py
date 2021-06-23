@@ -5,10 +5,12 @@ import pytorch_lightning as pl
 import numpy as np
 import optuna
 import cv2
+import os
 from kornia.geometry.transform import resize
 from pytorch_lightning.callbacks import Callback
 from PIL import Image
 import matplotlib.pyplot as plt
+from pathlib import Path
 
 class LoggingCallback(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
@@ -41,6 +43,7 @@ class ConvVAE(pl.LightningModule):
         self.trial = trial
         self.run = run
         self.first_run = True
+        self.ROOT = str(Path(__file__).parent.parent.parent)
 
         # ____________________ENCODER____________________
         self.enc1 = nn.Conv2d(
@@ -252,16 +255,22 @@ class ConvVAE(pl.LightningModule):
         if self.first_run: # Log originals in first run
             for i, img in enumerate(X_origin):
                 im_o = Image.fromarray(img)
+                plt.figure()
+                plt.imshow(im_o)
+                plt.savefig(os.path.join(self.ROOT, "reports", "orig", f"orig{i}.jpg"))
                 self.run.log_image(
                     name=f"orig{i}",
-                    plot=plt.imshow(im_o)
+                    path=os.path.join(self.ROOT, "reports", "orig", f"orig{i}.jpg")
                 )
             
         for i, img in enumerate(X_hat):
             im_r = Image.fromarray(img)
+            plt.figure()
+            plt.imshow(im_r)
+            plt.savefig(os.path.join(self.ROOT, "reports", "recon", f"recon{i}.jpg"))
             self.run.log_image(
                 name=f"recon{i}",
-                plot=plt.imshow(im_r)
+                path=os.path.join(self.ROOT, "reports", "recon", f"recon{i}.jpg")
             )
 
 
