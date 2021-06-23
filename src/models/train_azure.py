@@ -26,7 +26,6 @@ import wandb
 import pytorch_lightning as pl
 import optuna
 from src.models.model_lightning import ConvVAE, LoggingCallback
-from src.models.model_FC import Decoder, Encoder, Net
 
 log = logging.getLogger(__name__)
 
