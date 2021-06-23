@@ -216,6 +216,8 @@ class Trainer:
 
         #if self.args.use_wandb:
         #    wandb.watch(model, log_freq=100)
+        run.log("Train len", len(train_dataloader))
+        run.log("Val len", len(test_dataloader))
         start = time.time()
         print("Start training VAE...")
         trainer.fit(model, train_dataloader, test_dataloader)
