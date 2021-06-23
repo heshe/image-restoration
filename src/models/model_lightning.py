@@ -279,6 +279,7 @@ class ConvVAE(pl.LightningModule):
                 name=f"recon{i}_{self.round}",
                 path=img_path
             )
+        self.round += 1
 
 
         
