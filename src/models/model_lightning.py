@@ -257,20 +257,20 @@ class ConvVAE(pl.LightningModule):
                 im_o = Image.fromarray(img)
                 plt.figure()
                 plt.imshow(im_o)
-                plt.savefig(os.path.join(self.ROOT, "reports", "orig", f"orig{i}.jpg"))
+                plt.savefig(os.path.join(self.ROOT, "reports", "figures", "orig", f"orig{i}.jpg"))
                 self.run.log_image(
                     name=f"orig{i}",
-                    path=os.path.join(self.ROOT, "reports", "orig", f"orig{i}.jpg")
+                    path=os.path.join(self.ROOT, "reports", "figures", "orig", f"orig{i}.jpg")
                 )
             
         for i, img in enumerate(X_hat):
             im_r = Image.fromarray(img)
             plt.figure()
             plt.imshow(im_r)
-            plt.savefig(os.path.join(self.ROOT, "reports", "recon", f"recon{i}.jpg"))
+            plt.savefig(os.path.join(self.ROOT, "reports", "figures", "recon", f"recon{i}.jpg"))
             self.run.log_image(
                 name=f"recon{i}",
-                path=os.path.join(self.ROOT, "reports", "recon", f"recon{i}.jpg")
+                path=os.path.join(self.ROOT, "reports", "figures", "recon", f"recon{i}.jpg")
             )
 
 
