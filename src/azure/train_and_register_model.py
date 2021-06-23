@@ -7,14 +7,9 @@ import azureml.core
 from azureml.core import Environment, Experiment, ScriptRunConfig, Workspace
 
 
-# Add parser
-parser = argparse.ArgumentParser(description="Deployment arguments")
-
-# Operations
-parser.add_argument("--experiment_name", default="image_resto", type=str)
-
 # Hyperparameters
 parser = argparse.ArgumentParser(description="Deployment arguments")
+parser.add_argument("--experiment_name", default="image_resto", type=str)
 parser.add_argument("--lr", default=0.001, type=float)
 parser.add_argument("--n_epochs", default=1, type=int)
 parser.add_argument("--batch_size", default=16, type=int)
