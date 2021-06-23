@@ -27,8 +27,13 @@ def init():
     global model
     model = ConvVAE()
 
-# Called when a request is received
 def run(data):
+    test = json.loads(data)
+    print(f"received data {test}")
+    return f"test is {test}"
+
+# Called when a request is received
+def run_real(data):
     # Get the input data as a numpy array
     X = np.array(json.loads(data)["input_data"])
     X = torch.from_numpy(X)
