@@ -36,7 +36,7 @@ parser.set_defaults(store_model=True)
 parser.add_argument("--data_name", default="image-resto", type=str)
 
 args = parser.parse_args(sys.argv[1:])
-print(sys.argv)
+print(args)
 
 # Load the workspace from the saved config file
 ws = Workspace.from_config()
