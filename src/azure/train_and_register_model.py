@@ -15,7 +15,7 @@ parser.add_argument("--experiment_name", default="image_resto", type=str)
 
 # Hyperparameters
 parser.add_argument("--lr", default=0.001, type=float)
-parser.add_argument("--n_epochs", default=10, type=int)
+parser.add_argument("--n_epochs", default=1, type=int)
 parser.add_argument("--batch_size", default=16, type=int)
 parser.add_argument("--latent_dim", default=256, type=int)
 parser.add_argument("--dropout", default=0.5, type=float)

@@ -30,10 +30,10 @@ from src.models.model_FC import Decoder, Encoder, Net
 log = logging.getLogger(__name__)
 
 class Trainer:
-    def __init__(self, args):
+    def __init__(self):
         parser = argparse.ArgumentParser(description="Deployment arguments")
         parser.add_argument("--lr", default=0.001, type=float)
-        parser.add_argument("--n_epochs", default=10, type=int)
+        parser.add_argument("--n_epochs", default=1, type=int)
         parser.add_argument("--batch_size", default=16, type=int)
         parser.add_argument("--latent_dim", default=256, type=int)
         parser.add_argument("--dropout", default=0.5, type=float)
