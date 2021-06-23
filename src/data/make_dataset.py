@@ -1,14 +1,16 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
-#import sys
-#sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
+
+# import sys
+# sys.path.insert(0,"C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/image-restoration")
 # Define path to data
 # path = "/Users/Morten/Downloads/archive"
 path = "C:/Users/Asger/OneDrive/Skrivebord/DTU/Machine_Learning_Operations/data"
 
+
 # Store raw data in "data/raw" and processeed in "data/processed"
-def load_dataset(total_load_amount = True):
+def load_dataset(total_load_amount=True):
     print("Loading data... \n")
     ab1 = np.load(path + "/ab/ab/ab1.npy")
     ab2 = np.load(path + "/ab/ab/ab2.npy")
@@ -26,8 +28,8 @@ def load_dataset(total_load_amount = True):
     ab_tensor = ab_tensor[:ten_pct_mark, :, :, :]
 
     print("Storing raw data... \n")
-    #torch.save(ab_tensor, "data/raw/ab.pt")
-    #torch.save(gray_tensor, "data/raw/gray.pt")
+    # torch.save(ab_tensor, "data/raw/ab.pt")
+    # torch.save(gray_tensor, "data/raw/gray.pt")
 
     # ____________ Process ___________
     ab_processed = ab_tensor / 255
@@ -40,7 +42,7 @@ def load_dataset(total_load_amount = True):
 
     train_Y = ab_processed[:cut_amount, :, :, :]
     test_Y = ab_processed[cut_amount:, :, :, :]
-    
+
     if total_load_amount:
         print("Storing full size processed data... \n")
         torch.save(train_X, "data/processed/train_X.pt")
@@ -64,9 +66,10 @@ def load_dataset(total_load_amount = True):
         torch.save(test_Y[amount:, :, :, :], "data/processed/test_Y_small.pt")
         print("Test Y")
 
+
 class mlopsDataset(Dataset):
     def __init__(self, train, path, full_size):
-        
+
         if full_size:
             if train:
                 print("Loading train data...")
@@ -95,9 +98,13 @@ class mlopsDataset(Dataset):
         return X, y
 
 
-def load_data(train=True, batch_size=64, shuffle=True, path = "", full_size=True):
+def load_data(train=True, batch_size=64, shuffle=True, path="", full_size=True):
     data = mlopsDataset(train, path, full_size)
-    return DataLoader(data, batch_size, shuffle,)
+    return DataLoader(
+        data,
+        batch_size,
+        shuffle,
+    )
 
 
 if __name__ == "__main__":

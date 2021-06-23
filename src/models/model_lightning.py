@@ -24,11 +24,11 @@ class LoggingCallback(Callback):
             pl_module.run.log("Train loss", trainer.logged_metrics["train_loss"].item())
 
 class ConvVAE(pl.LightningModule):
-    def __init__(self, lr=0.001, img_size=33, latent_dim=256, dropout_rate=0.5, trial=None, run=None):
+    def __init__(self, lr=0.001, img_size=33, latent_dim=1024, dropout_rate=0.5, trial=None, run=None):
         super(ConvVAE, self).__init__()
 
-        kernel_size = 3  # (4, 4) kernel
-        init_channels = 64  # initial number of filters
+        kernel_size = 4  # (4, 4) kernel
+        init_channels = 80  # initial number of filters
         image_channels = 1  # MNIST images are grayscale
         self.latent_dim = latent_dim  # latent dimension for sampling
         self.lr = lr
@@ -75,44 +75,47 @@ class ConvVAE(pl.LightningModule):
         # ____________________DECODER____________________
         self.dec1 = nn.ConvTranspose2d(
             in_channels=self.latent_dim,
-            out_channels=init_channels * 4,
+            out_channels=init_channels * 16,
             kernel_size=kernel_size,
-            stride=2,
+            stride=1,
             padding=0,
         )
-        self.bn4 = nn.BatchNorm2d(init_channels*4)
+        self.bn4 = nn.BatchNorm2d(init_channels*16)
 
         self.dec2 = nn.ConvTranspose2d(
-            in_channels=init_channels * 4,
-            out_channels=init_channels * 2,
+            in_channels=init_channels * 16,
+            out_channels=init_channels * 8,
             kernel_size=kernel_size,
             stride=2,
-            padding=1,
+            padding=2,
         )
-        self.bn5 = nn.BatchNorm2d(init_channels*2)
+        self.bn5 = nn.BatchNorm2d(init_channels*8)
 
         self.dec3 = nn.ConvTranspose2d(
-            in_channels=init_channels * 2,
-            out_channels=init_channels,
+            in_channels=init_channels * 8,
+            out_channels=init_channels * 4,
             kernel_size=kernel_size,
-            stride=2,
-            padding=1,
+            stride=3,
+            padding=2,
         )
-        self.bn6 = nn.BatchNorm2d(init_channels)
+        self.bn6 = nn.BatchNorm2d(init_channels*4)
 
 
         self.dec4 = nn.ConvTranspose2d(
-            in_channels=init_channels,
-            out_channels=2,
-            kernel_size=kernel_size,
-            stride=2,
-            padding=1,
+            in_channels=init_channels*4,
+            out_channels=init_channels * 2,
+            kernel_size=kernel_size +1,
+            stride=4,
+            padding=2,
         )
-        self.bn7 = nn.BatchNorm2d(2)
-
+        self.bn7 = nn.BatchNorm2d(init_channels*2)
 
         self.dec5 = nn.ConvTranspose2d(
-            in_channels=2, out_channels=2, kernel_size=kernel_size, stride=2, padding=1
+            in_channels=init_channels*2, 
+            out_channels=2, 
+            kernel_size=kernel_size + 2, 
+            stride=4, 
+            padding=3
         )
 
     def reparameterize(self, mu, log_var):
