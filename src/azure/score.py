@@ -9,9 +9,11 @@ import torch
 from pathlib import Path
 from kornia.geometry.transform import resize
 
+from src.models.model_lightning import ConvVAE
+
 
 # Called when the service is loaded
-def init():
+def init_real():
     project_dir = str(Path(__file__).parent.parent.parent)
     dotenv_path = os.path.join(project_dir, ".env")
     dotenv.load_dotenv(dotenv_path)
@@ -21,6 +23,9 @@ def init():
     model_path = os.path.join(os.getenv("AZUREML_MODEL_DIR"), "image_resto.pkl")
     model = joblib.load(model_path)
 
+def init():
+    global model
+    model = ConvVAE()
 
 # Called when a request is received
 def run(data):
