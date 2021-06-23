@@ -20,7 +20,7 @@ pathlib2
 argparse
 torch
 torchvision
-python3-opencv
+opencv-python-headless
 joblib
 hydra-core>=1.1
 tqdm

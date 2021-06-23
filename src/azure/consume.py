@@ -12,8 +12,9 @@ from src.models.model_lightning import ConvVAE
 from src.data.make_dataset import load_data
 import cv2
 import matplotlib.pyplot as plt
+from skimage import color
 
-
+"""
 def allowSelfSignedHttps(allowed):
     # bypass the server certificate verification on client side
     if allowed and not os.environ.get('PYTHONHTTPSVERIFY', '') and getattr(ssl, '_create_unverified_context', None):
@@ -58,8 +59,8 @@ except urllib.error.HTTPError as error:
     # Print the headers - they include the requert ID and the timestamp, which are useful for debugging the failure
     print(error.info())
     print(json.loads(error.read().decode("utf8", 'ignore')))
-
 """
+
 def run(data):
     # Get the input data as a numpy array
     X = np.array(json.loads(data)["input_data"])
@@ -97,18 +98,18 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
     # create a new empty array
     imgs_ = []
 
-    for i in range(0, n):
-        imgs_.append(cv2.cvtColor(imgs[i], cv2.COLOR_LAB2RGB))
+    #for i in range(0, n):
+    #    imgs_.append(cv2.cvtColor(imgs[i], cv2.COLOR_LAB2RGB))
 
     # convert the image matrix into a numpy array
-    imgs_ = np.array(imgs_)
+    imgs_ = np.array(imgs)
 
     return imgs_
-"""
 
 
 
-"""
+
+
 if __name__ == "__main__":
 
     datapath = str(Path(__file__).parent.parent.parent) + "/data/interim/exam_images.npy"
@@ -128,11 +129,10 @@ if __name__ == "__main__":
     data = {"input_data" : X}
     body = str.encode(json.dumps(data))
     img = np.array(json.loads(run(body))).astype(np.uint8)
-
     plt.figure()
     plt.imshow((img*255).squeeze())
     plt.show()
-"""
+
     
 
 

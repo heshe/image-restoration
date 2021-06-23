@@ -42,7 +42,7 @@ deployment_config = AciWebservice.deploy_configuration(cpu_cores=1, memory_gb=1)
 
 service_name = args.service_name
 if service_name in ws.webservices:
-    ans = input("Service with that name exists. Do you want to replace it? [y]/[n]")
+    ans = input("Service with that name exists. Do you want to replace it? [y]/[n]\n")
     if ans == "y":
         ws.webservices[service_name].delete()
     else:
