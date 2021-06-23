@@ -2,9 +2,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
+import numpy as np
 import optuna
+import cv2
 from kornia.geometry.transform import resize
 from pytorch_lightning.callbacks import Callback
+from PIL import Image
 
 class LoggingCallback(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
@@ -36,6 +39,7 @@ class ConvVAE(pl.LightningModule):
         self.dropout_rate = dropout_rate
         self.trial = trial
         self.run = run
+        self.first_run = True
 
         # ____________________ENCODER____________________
         self.enc1 = nn.Conv2d(
@@ -182,6 +186,12 @@ class ConvVAE(pl.LightningModule):
         rec, kld = self.loss_function2(Y, X_hat, mean, log_var)
         val_loss = rec + kld
         self.log('val_loss', val_loss)
+
+        if batch_idx==0:
+            if self.run:
+                self.log_images_to_azure(X, Y, X_hat)
+                self.first_run = False
+
         return val_loss
 
     def configure_optimizers(self):
@@ -191,4 +201,65 @@ class ConvVAE(pl.LightningModule):
         reproduction_loss = nn.functional.mse_loss(x_hat, x, reduction="sum")
         KLD = -0.5 * torch.sum(1 + log_var - mean.pow(2) - log_var.exp())
         return reproduction_loss, 0.01 * KLD
+
+    def get_rbg_from_lab(self, gray_imgs, ab_imgs, img_size, n=10):
+        # create an empty array to store images
+        imgs = np.zeros((n, img_size, img_size, 3))
+
+        imgs[:, :, :, 0] = gray_imgs[0:n:]
+        imgs[:, :, :, 1:] = ab_imgs[0:n:]
+
+        # convert all the images to type unit8
+        imgs = imgs.astype("uint8")
+
+        # create a new empty array
+        imgs_ = []
+
+        for i in range(0, n):
+            imgs_.append(cv2.cvtColor(imgs[i], cv2.COLOR_LAB2RGB))
+
+        # convert the image matrix into a numpy array
+        imgs_ = np.array(imgs_)
+
+        return imgs_
+
+
+    def log_images_to_azure(self, X, Y, X_hat):
+        n_images_to_log = 4 # Right now: cannot be more than #test_imgs = 1000
+
+        X = X[:n_images_to_log, :, :, :]
+        X_hat = X[:n_images_to_log, :, :, :]
+        Y = Y[:n_images_to_log, :, :, :]
+
+        X_origin = self.get_rbg_from_lab(
+            (X * 255).squeeze(),
+            (Y * 255).permute(0, 2, 3, 1),
+            img_size=self.img_size,
+            n=n_images_to_log,
+        )
+
+        X_hat = self.get_rbg_from_lab(
+            (X * 255).squeeze(),
+            (X_hat * 255).permute(0, 2, 3, 1),
+            img_size=self.img_size,
+            n=n_images_to_log,
+        )
+
+        if self.first_run: # Log originals in first run
+            for i, img in enumerate(X_origin):
+                im_o = Image.fromarray(img)
+                self.run.log_image(
+                    name=f"orig{i}",
+                    plt=im_o
+                )
+            
+        for i, img in enumerate(X_hat):
+            im_r = Image.fromarray(img)
+            self.run.log_image(
+                name=f"recon{i}",
+                plt=im_r
+            )
+
+
+        
 
