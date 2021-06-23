@@ -24,7 +24,7 @@ import sys
 import wandb
 import pytorch_lightning as pl
 import optuna
-from src.models.model_lightning import ConvVAE, StatsCallback
+from src.models.model_lightning import ConvVAE, LoggingCallback
 from src.models.model_FC import Decoder, Encoder, Net
 
 log = logging.getLogger(__name__)
@@ -38,17 +38,17 @@ class Trainer:
         parser.add_argument("--latent_dim", default=256, type=int)
         parser.add_argument("--dropout", default=0.5, type=float)
         parser.add_argument("--conv_img_dim", default=33, type=int)
-        parser.add_argument("--use_wandb", default=False, type=bool)
-        parser.add_argument("--plot_results", default=False, type=bool)
-        parser.add_argument("--use_cuda", default=True, type=bool)
-        parser.add_argument("--use_CNN", default=True, type=bool)
-        parser.add_argument("--azure", default=True, type=bool)
+        parser.add_argument("--use_wandb", default=False, action=argparse.BooleanOptionalAction)
+        parser.add_argument("--plot_results", default=False, action=argparse.BooleanOptionalAction)
+        parser.add_argument("--use_cuda", default=True, action=argparse.BooleanOptionalAction)
+        parser.add_argument("--use_CNN", default=True, action=argparse.BooleanOptionalAction)
+        parser.add_argument("--azure", default=True, action=argparse.BooleanOptionalAction)
         parser.add_argument("--model_name", default="image_resto", type=str)
-        parser.add_argument("--optuna", default=False, type=bool)
+        parser.add_argument("--optuna", default=False, action=argparse.BooleanOptionalAction)
         parser.add_argument("--n_trials", default=10, type=int)
-        parser.add_argument("--small_dataset", default=False, type=bool)
+        parser.add_argument("--small_dataset", default=False, action=argparse.BooleanOptionalAction)
         parser.add_argument("--run_name", default="default_run", type=str)
-        parser.add_argument("--save_model", default=True, type=bool)
+        parser.add_argument("--save_model", default=True, action=argparse.BooleanOptionalAction)
         parser.add_argument("--data_name", default="image-resto", type=str)
 
         args = parser.parse_args(sys.argv[1:])
@@ -195,13 +195,13 @@ class Trainer:
                 max_epochs=self.args.n_epochs,
                 precision=16,
                 gpus=-1,
-                callbacks=[StatsCallback()]
+                callbacks=[LoggingCallback()]
             )
         else:
             trainer = pl.Trainer(
                 #limit_train_batches=0.1, 
                 max_epochs=self.args.n_epochs,
-                callbacks=[StatsCallback()]
+                callbacks=[LoggingCallback()]
             )
 
 
@@ -220,7 +220,7 @@ class Trainer:
         if self.args.azure:
             if self.args.save_model:
                 # Save the trained model
-                model_file = config.experiment.model_name + ".pkl"
+                model_file = self.args.model_name + ".pkl"
                 tempmodel = ConvVAE() # Hack for saving model wihtout Pytorch Lightning things
                 tempmodel.load_state_dict(model.state_dict())
                 joblib.dump(value=tempmodel, filename=model_file)

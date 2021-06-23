@@ -6,7 +6,7 @@ import optuna
 from kornia.geometry.transform import resize
 from pytorch_lightning.callbacks import Callback
 
-class StatsCallback(Callback):
+class LoggingCallback(Callback):
     def on_validation_epoch_end(self, trainer, pl_module):
         val_loss = trainer.logged_metrics["val_loss"]
         epoch = trainer.logged_metrics["epoch"]

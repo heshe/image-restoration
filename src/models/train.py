@@ -22,7 +22,7 @@ from pathlib import Path
 import wandb
 import pytorch_lightning as pl
 import optuna
-from src.models.model_lightning import ConvVAE, StatsCallback
+from src.models.model_lightning import ConvVAE, LoggingCallback
 from src.models.model_FC import Decoder, Encoder, Net
 
 log = logging.getLogger(__name__)
@@ -174,13 +174,13 @@ class Trainer:
                 max_epochs=self.args.n_epochs,
                 precision=16,
                 gpus=-1,
-                callbacks=[StatsCallback()]
+                callbacks=[LoggingCallback()]
             )
         else:
             trainer = pl.Trainer(
                 #limit_train_batches=0.1, 
                 max_epochs=self.args.n_epochs,
-                callbacks=[StatsCallback()]
+                callbacks=[LoggingCallback()]
             )
 
 
