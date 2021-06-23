@@ -33,6 +33,7 @@ parser.set_defaults(small_dataset=True)
 parser.add_argument("--run_name", default="default_run", type=str)
 parser.add_argument('--no-save_model', dest='save_model', action='store_false')
 parser.set_defaults(save_model=True)
+parser.add_argument("--data_name", default="image-resto", type=str)
 
 args = parser.parse_args(sys.argv[1:])
 print(args)
