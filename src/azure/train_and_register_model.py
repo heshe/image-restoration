@@ -16,22 +16,22 @@ parser.add_argument("--batch_size", default=256, type=int)
 parser.add_argument("--latent_dim", default=1024, type=int)
 parser.add_argument("--dropout", default=0.5, type=float)
 parser.add_argument("--conv_img_dim", default=224, type=int)
-parser.add_argument('--use_wandb', dest='use_wandb', action='store_true')
+parser.add_argument("--use_wandb", dest="use_wandb", action="store_true")
 parser.set_defaults(use_wandb=False)
-parser.add_argument('--plot_results', dest='plot_results', action='store_true')
+parser.add_argument("--plot_results", dest="plot_results", action="store_true")
 parser.set_defaults(plot_results=False)
-parser.add_argument('--no-cuda', dest='use_cuda', action='store_false')
+parser.add_argument("--no-cuda", dest="use_cuda", action="store_false")
 parser.set_defaults(use_cuda=True)
-parser.add_argument('--no-CNN', dest='use_CNN', action='store_false')
+parser.add_argument("--no-CNN", dest="use_CNN", action="store_false")
 parser.set_defaults(use_CNN=True)
-parser.add_argument('--no-azure', dest='azure', action='store_false')
+parser.add_argument("--no-azure", dest="azure", action="store_false")
 parser.set_defaults(azure=True)
 parser.add_argument("--model_name", default="image_resto", type=str)
 parser.add_argument("--n_trials", default=10, type=int)
-parser.add_argument('--small_dataset', dest='small_dataset', action='store_true')
+parser.add_argument("--small_dataset", dest="small_dataset", action="store_true")
 parser.set_defaults(small_dataset=False)
 parser.add_argument("--run_name", default="default_run", type=str)
-parser.add_argument('--no-save_model', dest='save_model', action='store_false')
+parser.add_argument("--no-save_model", dest="save_model", action="store_false")
 parser.set_defaults(save_model=True)
 parser.add_argument("--data_name", default="image-resto", type=str)
 
@@ -58,12 +58,18 @@ script_config = ScriptRunConfig(
     source_directory=ROOT,
     script=os.path.join(ROOT, "src", "models", "train_azure.py"),
     arguments=[
-        "--lr", args.lr,
-        "--n_epochs", args.n_epochs,
-        "--latent_dim", args.latent_dim,
-        "--dropout", args.dropout,
-        "--conv_img_dim", args.conv_img_dim,
-        "--input_data", image_data.as_named_input("image_resto").as_mount()
+        "--lr",
+        args.lr,
+        "--n_epochs",
+        args.n_epochs,
+        "--latent_dim",
+        args.latent_dim,
+        "--dropout",
+        args.dropout,
+        "--conv_img_dim",
+        args.conv_img_dim,
+        "--input_data",
+        image_data.as_named_input("image_resto").as_mount(),
     ],
     environment=project_env,
 )  # Use the environment created previously

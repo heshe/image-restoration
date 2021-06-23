@@ -30,7 +30,7 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
-        self.bn2 = nn.BatchNorm2d(init_channels*2)
+        self.bn2 = nn.BatchNorm2d(init_channels * 2)
 
         self.enc3 = nn.Conv2d(
             in_channels=init_channels * 2,
@@ -39,7 +39,7 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
-        self.bn3 = nn.BatchNorm2d(init_channels*4)
+        self.bn3 = nn.BatchNorm2d(init_channels * 4)
 
         # fully connected layers for learning representations
         self.fc1 = nn.Linear(init_channels * 4, latent_dim)
@@ -55,7 +55,7 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=0,
         )
-        self.bn4 = nn.BatchNorm2d(init_channels*4)
+        self.bn4 = nn.BatchNorm2d(init_channels * 4)
 
         self.dec2 = nn.ConvTranspose2d(
             in_channels=init_channels * 4,
@@ -64,7 +64,7 @@ class ConvVAE(nn.Module):
             stride=2,
             padding=1,
         )
-        self.bn5 = nn.BatchNorm2d(init_channels*2)
+        self.bn5 = nn.BatchNorm2d(init_channels * 2)
 
         self.dec3 = nn.ConvTranspose2d(
             in_channels=init_channels * 2,

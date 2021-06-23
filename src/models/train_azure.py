@@ -7,16 +7,12 @@ import logging
 
 import cv2
 import os
-import hydra
 import numpy as np
 import torch
 import torch.nn as nn
-import tqdm
 import joblib
 from kornia.geometry.transform import resize
-from omegaconf import OmegaConf, DictConfig
 from PIL import Image
-from torch.optim import Adam
 from pathlib import Path
 import argparse
 import sys
@@ -24,10 +20,10 @@ import time
 
 import wandb
 import pytorch_lightning as pl
-import optuna
 from src.models.model_lightning import ConvVAE, LoggingCallback
 
 log = logging.getLogger(__name__)
+
 
 class Trainer:
     def __init__(self):
@@ -38,24 +34,26 @@ class Trainer:
         parser.add_argument("--latent_dim", default=1024, type=int)
         parser.add_argument("--dropout", default=0.5, type=float)
         parser.add_argument("--conv_img_dim", default=224, type=int)
-        parser.add_argument('--use_wandb', dest='use_wandb', action='store_true')
+        parser.add_argument("--use_wandb", dest="use_wandb", action="store_true")
         parser.set_defaults(use_wandb=False)
-        parser.add_argument('--plot_results', dest='plot_results', action='store_true')
+        parser.add_argument("--plot_results", dest="plot_results", action="store_true")
         parser.set_defaults(plot_results=False)
-        parser.add_argument('--no-cuda', dest='use_cuda', action='store_false')
+        parser.add_argument("--no-cuda", dest="use_cuda", action="store_false")
         parser.set_defaults(use_cuda=True)
-        parser.add_argument('--no-CNN', dest='use_CNN', action='store_false')
+        parser.add_argument("--no-CNN", dest="use_CNN", action="store_false")
         parser.set_defaults(use_CNN=True)
-        parser.add_argument('--no-azure', dest='azure', action='store_false')
+        parser.add_argument("--no-azure", dest="azure", action="store_false")
         parser.set_defaults(azure=True)
         parser.add_argument("--model_name", default="image_resto", type=str)
         parser.add_argument("--n_trials", default=10, type=int)
-        parser.add_argument('--small_dataset', dest='small_dataset', action='store_true')
+        parser.add_argument(
+            "--small_dataset", dest="small_dataset", action="store_true"
+        )
         parser.set_defaults(small_dataset=False)
         parser.add_argument("--run_name", default="default_run", type=str)
-        parser.add_argument('--no-save_model', dest='save_model', action='store_false')
+        parser.add_argument("--no-save_model", dest="save_model", action="store_false")
         parser.set_defaults(save_model=True)
-        parser.add_argument('--optuna', dest='optuna', action='store_true')
+        parser.add_argument("--optuna", dest="optuna", action="store_true")
         parser.set_defaults(optuna=False)
         parser.add_argument("--input_data", default="image-resto", type=str)
 
@@ -131,15 +129,15 @@ class Trainer:
             wandb.log({"Reconstructed": [wandb.Image(i) for i in recon_images]})
 
     def train(self, trial=None):
-        
+
         if self.args.optuna and trial:
-            self.args.lr = trial.suggest_loguniform('lr', 1e-5, 1e-2)
+            self.args.lr = trial.suggest_loguniform("lr", 1e-5, 1e-2)
             self.args.latent_dim = trial.suggest_int("latent_dim", 32, 512)
             self.args.dropout = trial.suggest_uniform("dropout", 0.0, 1)
 
-        img_size = (
-            self.args.conv_img_dim
-        )  # 33 if model_conv32, else 224 for model_conv224
+        # img_size = (
+        #     self.args.conv_img_dim
+        # )  # 33 if model_conv32, else 224 for model_conv224
 
         # Init wandb
         if self.args.use_wandb:
@@ -156,7 +154,7 @@ class Trainer:
             from azureml.core import Run
 
             run = Run.get_context()  # Setup run instance for cloud
-            
+
             datapath = run.input_datasets["image_resto"]
             run.log("datapath", datapath)
             run.log("args", self.args)
@@ -172,21 +170,19 @@ class Trainer:
                 path=datapath,
                 small_dataset=self.args.small_dataset,
                 batch_size=self.args.batch_size,
-                shuffle=False
+                shuffle=False,
             )
 
         else:
             from src.data.make_dataset import load_data
 
             train_dataloader = load_data(
-                train=True,
-                batch_size=self.args.batch_size,
-                path = self.ROOT
+                train=True, batch_size=self.args.batch_size, path=self.ROOT
             )
             test_dataloader = load_data(
                 train=False,
                 batch_size=self.args.batch_size,
-                path = self.ROOT,
+                path=self.ROOT,
                 shuffle=False,
             )
 
@@ -204,17 +200,16 @@ class Trainer:
                 max_epochs=self.args.n_epochs,
                 precision=16,
                 gpus=-1,
-                callbacks=[LoggingCallback()]
+                callbacks=[LoggingCallback()],
             )
         else:
             trainer = pl.Trainer(
-                #limit_train_batches=0.1, 
+                # limit_train_batches=0.1,
                 max_epochs=self.args.n_epochs,
-                callbacks=[LoggingCallback()]
+                callbacks=[LoggingCallback()],
             )
 
-
-        #if self.args.use_wandb:
+        # if self.args.use_wandb:
         #    wandb.watch(model, log_freq=100)
         run.log("Train len", len(train_dataloader))
         run.log("Val len", len(test_dataloader))
@@ -223,7 +218,7 @@ class Trainer:
         trainer.fit(model, train_dataloader, test_dataloader)
         print("Finish training")
         end = time.time()
-        run.log("Time spent", end-start)
+        run.log("Time spent", end - start)
         """
         if self.args.use_wandb:
             self.log_images_to_wandb(X_test, Y_test, model, img_size)
@@ -238,7 +233,7 @@ class Trainer:
                     lr=self.args.lr,
                     latent_dim=self.args.latent_dim,
                     img_size=self.args.conv_img_dim,
-                ) # Hack for saving model wihtout Pytorch Lightning things
+                )  # Hack for saving model wihtout Pytorch Lightning things
                 tempmodel.load_state_dict(model.state_dict())
                 joblib.dump(value=tempmodel, filename=model_file)
                 run.upload_file(
@@ -255,7 +250,7 @@ class Trainer:
                 )
             else:
                 run.complete()
-         
+
         return trainer.logged_metrics["val_loss"]
 
 
