@@ -1,5 +1,5 @@
 lr: 0.001
-n_epochs: 10
+n_epochs: 15
 batch_size: 16
 latent_dim: 256
 dropout: 0.5
@@ -11,7 +11,7 @@ use_CNN: True
 azure: False
 model_name: image_resto
 optuna: True
-n_trials: 10
+n_trials: 20
 small_dataset: False
 run_name: default_run
 save_model: False

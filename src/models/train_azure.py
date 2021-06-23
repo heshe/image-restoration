@@ -18,6 +18,8 @@ from omegaconf import OmegaConf, DictConfig
 from PIL import Image
 from torch.optim import Adam
 from pathlib import Path
+import argparse
+import sys
 
 import wandb
 import pytorch_lightning as pl
@@ -27,11 +29,30 @@ from src.models.model_FC import Decoder, Encoder, Net
 
 log = logging.getLogger(__name__)
 
-
-
 class Trainer:
     def __init__(self, args):
-        self.args = args.experiment
+        parser = argparse.ArgumentParser(description="Deployment arguments")
+        parser.add_argument("--lr", default=0.001, type=float)
+        parser.add_argument("--n_epochs", default=10, type=int)
+        parser.add_argument("--batch_size", default=16, type=int)
+        parser.add_argument("--latent_dim", default=256, type=int)
+        parser.add_argument("--dropout", default=0.5, type=float)
+        parser.add_argument("--conv_img_dim", default=33, type=int)
+        parser.add_argument("--use_wandb", default=False, type=bool)
+        parser.add_argument("--plot_results", default=False, type=bool)
+        parser.add_argument("--use_cuda", default=True, type=bool)
+        parser.add_argument("--use_CNN", default=True, type=bool)
+        parser.add_argument("--azure", default=True, type=bool)
+        parser.add_argument("--model_name", default="image_resto", type=str)
+        parser.add_argument("--optuna", default=False, type=bool)
+        parser.add_argument("--n_trials", default=10, type=int)
+        parser.add_argument("--small_dataset", default=False, type=bool)
+        parser.add_argument("--run_name", default="default_run", type=str)
+        parser.add_argument("--save_model", default=True, type=bool)
+        parser.add_argument("--data_name", default="image-resto", type=str)
+
+        args = parser.parse_args(sys.argv[1:])
+        self.args = args
 
         # Set root path
         self.ROOT = str(Path(__file__).parent.parent.parent)
@@ -165,15 +186,15 @@ class Trainer:
             lr=self.args.lr,
             latent_dim=self.args.latent_dim,
             img_size=self.args.conv_img_dim,
-            trial=trial
+            trial=trial,
+            run=run,
         )
 
         if self.args.azure:
             trainer = pl.Trainer(
-                limit_train_batches=0.1, 
                 max_epochs=self.args.n_epochs,
                 precision=16,
-                gpus=None,
+                gpus=-1,
                 callbacks=[LoggingCallback()]
             )
         else:
@@ -243,33 +264,6 @@ def get_rbg_from_lab(gray_imgs, ab_imgs, img_size, n=10):
     return imgs_
 
 
-@hydra.main(config_path="../conf", config_name="config")
-def init_hydra(config : DictConfig) -> None:
-    print(OmegaConf.to_yaml(config))
-    trainer = Trainer(config)
-    if config.experiment.optuna:
-        study = optuna.create_study(
-            direction="minimize",
-            pruner=optuna.pruners.MedianPruner(
-                    n_startup_trials=5,
-                    n_warmup_steps=5, 
-                    interval_steps=1
-            )
-        ) #, sampler=optuna.samplers.GridSampler(search_space))
-        
-        study.optimize(trainer.train, n_trials=config.experiment.n_trials) 
-        fig1 = optuna.visualization.plot_optimization_history(study)
-        fig2 = optuna.visualization.plot_intermediate_values(study)
-        fig3 = optuna.visualization.plot_param_importances(
-            study, target=lambda t: t.duration.total_seconds(), target_name="duration"
-        )
-        fig4 = optuna.visualization.plot_parallel_coordinate(study)
-        fig1.write_image("opt_hist.jpg")
-        fig2.write_image("lr_curves.jpg")
-        fig3.write_image("param_importances.jpg")
-        fig4.write_image("parallel_coordinates.jpg")
-    else:
-        trainer.train()
-
 if __name__ == "__main__":
-    config = init_hydra()
+    trainer = Trainer()
+    trainer.train()
