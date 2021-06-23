@@ -41,9 +41,13 @@ class ConvVAE(pl.LightningModule):
         self.img_size = img_size
         self.dropout_rate = dropout_rate
         self.trial = trial
+
+        # Logging and reporting
         self.run = run
         self.first_run = True
         self.ROOT = str(Path(__file__).parent.parent.parent)
+        self.round = 0 # Used to avoid name conflict in files
+
 
         # ____________________ENCODER____________________
         self.enc1 = nn.Conv2d(
@@ -263,7 +267,6 @@ class ConvVAE(pl.LightningModule):
                     name=f"orig{i}",
                     path=img_path
                 )
-                os.remove(img_path) # Remove img to make room for next image
 
             
         for i, img in enumerate(X_hat):
@@ -273,10 +276,9 @@ class ConvVAE(pl.LightningModule):
             plt.imshow(im_r)
             plt.savefig(img_path)
             self.run.log_image(
-                name=f"recon{i}",
+                name=f"recon{i}_{self.round}",
                 path=img_path
             )
-            os.remove(img_path)
 
 
         
