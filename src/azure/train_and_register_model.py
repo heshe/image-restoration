@@ -62,6 +62,7 @@ script_config = ScriptRunConfig(
         "--n_epochs", args.n_epochs,
         "--latent_dim", args.latent_dim,
         "--dropout", args.dropout,
+        "--conv_img_dim", args.conv_img_dim,
         "--input_data", image_data.as_named_input("image_resto").as_mount()
     ],
     environment=project_env,
