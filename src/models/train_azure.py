@@ -172,6 +172,7 @@ class Trainer:
                 path=datapath,
                 small_dataset=self.args.small_dataset,
                 batch_size=self.args.batch_size,
+                shuffle=False
             )
 
         else:
