@@ -170,7 +170,7 @@ class Trainer:
 
         if self.args.azure:
             trainer = pl.Trainer(
-                limit_train_batches=0.1, 
+                #limit_train_batches=0.1, 
                 max_epochs=self.args.n_epochs,
                 precision=16,
                 gpus=-1,

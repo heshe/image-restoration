@@ -20,6 +20,7 @@ from torch.optim import Adam
 from pathlib import Path
 import argparse
 import sys
+import time
 
 import wandb
 import pytorch_lightning as pl
@@ -51,7 +52,7 @@ class Trainer:
         parser.add_argument("--model_name", default="image_resto", type=str)
         parser.add_argument("--n_trials", default=10, type=int)
         parser.add_argument('--small_dataset', dest='small_dataset', action='store_true')
-        parser.set_defaults(small_dataset=True)
+        parser.set_defaults(small_dataset=False)
         parser.add_argument("--run_name", default="default_run", type=str)
         parser.add_argument('--no-save_model', dest='save_model', action='store_false')
         parser.set_defaults(save_model=True)
@@ -215,10 +216,12 @@ class Trainer:
 
         #if self.args.use_wandb:
         #    wandb.watch(model, log_freq=100)
-
+        start = time.time()
         print("Start training VAE...")
         trainer.fit(model, train_dataloader, test_dataloader)
         print("Finish training")
+        end = time.time()
+        run.log("Time spent", end-start)
         """
         if self.args.use_wandb:
             self.log_images_to_wandb(X_test, Y_test, model, img_size)
