@@ -1,16 +1,17 @@
+import os
+from pathlib import Path
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import optuna
+import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import pytorch_lightning as pl
-import numpy as np
-import optuna
-import cv2
-import os
 from kornia.geometry.transform import resize
-from pytorch_lightning.callbacks import Callback
 from PIL import Image
-import matplotlib.pyplot as plt
-from pathlib import Path
+from pytorch_lightning.callbacks import Callback
 
 
 class LoggingCallback(Callback):

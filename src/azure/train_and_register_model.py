@@ -6,7 +6,6 @@ from pathlib import Path
 import azureml.core
 from azureml.core import Environment, Experiment, ScriptRunConfig, Workspace
 
-
 # Hyperparameters
 parser = argparse.ArgumentParser(description="Deployment arguments")
 parser.add_argument("--experiment_name", default="image_resto", type=str)

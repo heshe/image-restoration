@@ -1,15 +1,11 @@
 import json
 import os
-import dotenv
 
-import joblib
 import cv2
+import joblib
 import numpy as np
 import torch
-from pathlib import Path
 from kornia.geometry.transform import resize
-
-from src.models.model_lightning import ConvVAE
 
 
 # Called when the service is loaded
@@ -36,9 +32,9 @@ def run(data):
     n = X_hat.shape[0]
 
     X_hat = get_rbg_from_lab(
-        (X * 255).squeeze(), 
-        (X_hat * 255).permute(0, 2, 3, 1), 
-        224, 
+        (X * 255).squeeze(),
+        (X_hat * 255).permute(0, 2, 3, 1),
+        224,
         n=n
     )
 

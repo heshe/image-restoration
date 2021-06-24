@@ -4,24 +4,23 @@ https://github.com/Jackson-Kang/Pytorch-VAE-tutorial/blob/master/01_Variational_
 A simple implementation of Gaussian MLP Encoder and Decoder trained on MNIST
 """
 import logging
-
-import cv2
 import os
-import hydra
-import numpy as np
-import torch
-import torch.nn as nn
-import joblib
-from kornia.geometry.transform import resize
-from omegaconf import OmegaConf, DictConfig
-from PIL import Image
 from pathlib import Path
 
-import wandb
-import pytorch_lightning as pl
+import cv2
+import hydra
+import joblib
+import numpy as np
 import optuna
-from src.models.model_lightning import ConvVAE, LoggingCallback
+import pytorch_lightning as pl
+import torch
+import torch.nn as nn
+from kornia.geometry.transform import resize
+from omegaconf import DictConfig, OmegaConf
+from PIL import Image
 
+import wandb
+from src.models.model_lightning import ConvVAE, LoggingCallback
 
 log = logging.getLogger(__name__)
 
@@ -120,8 +119,9 @@ class Trainer:
 
         # Get train and test
         if self.args.azure:
-            from src.azure.make_dataset_azure import load_data
             from azureml.core import Run
+
+            from src.azure.make_dataset_azure import load_data
 
             run = Run.get_context()  # Setup run instance for cloud
 
